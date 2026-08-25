@@ -1,0 +1,72 @@
+# =========================
+# Home Credit datasets
+# =========================
+data/raw/*
+data/processed/*
+data/interim/*
+data/external/*
+
+# Giữ lại cấu trúc thư mục
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/interim/.gitkeep
+!data/external/.gitkeep
+
+# Kaggle raw files
+application_train.csv
+application_test.csv
+bureau.csv
+bureau_balance.csv
+previous_application.csv
+credit_card_balance.csv
+POS_CASH_balance.csv
+installments_payments.csv
+HomeCredit_columns_description.csv
+sample_submission.csv
+
+# =========================
+# Model and graph outputs
+# =========================
+outputs/*
+artifacts/*
+checkpoints/*
+client_graphs/*
+models/checkpoints/*
+
+*.pt
+*.pth
+*.pkl
+*.pickle
+*.joblib
+*.npy
+*.npz
+*.parquet
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables/secrets
+.env
+.env.*
