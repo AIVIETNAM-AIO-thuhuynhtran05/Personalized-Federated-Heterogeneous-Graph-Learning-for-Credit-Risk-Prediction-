@@ -1,0 +1,7 @@
+algorithm: fedavg
+rounds: 20
+local_epochs: 1
+batch_size: 256
+learning_rate: 0.001
+client_counts: [10, 20, 30, 40, 50]
+seeds: [42]

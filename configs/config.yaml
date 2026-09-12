@@ -1,0 +1,13 @@
+seed: 42
+paths:
+  raw_application: data/raw/application_train.csv
+  prepared_tables: data/interim/tables
+  engineered_application: data/interim/application_features.csv
+  client_dir: data/processed/clients
+  graph_dir: data/processed/graphs
+  shared_encoder: data/processed/shared_encoder.json
+preprocessing:
+  missing_threshold: 0.80
+  protected_columns: [SK_ID_CURR, SK_ID_BUREAU, SK_ID_PREV, TARGET, REGION_RATING_CLIENT_W_CITY, OCCUPATION_TYPE]
+  missing_scope: global_before_partition
+  encoder_fit_scope: pooled_local_train_only

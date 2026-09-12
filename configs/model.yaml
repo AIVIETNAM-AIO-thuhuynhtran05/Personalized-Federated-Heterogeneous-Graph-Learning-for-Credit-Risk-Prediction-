@@ -1,0 +1,4 @@
+architecture: relation_mean_gnn
+hidden: 32
+layers: 2
+loss: binary_cross_entropy

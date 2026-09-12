@@ -1,0 +1,2 @@
+client,status,train_count,final_epoch,auc,roc_auc,pr_auc,average_precision,test_count,test_positive
+client_000,trained,32602,20,0.6400410307065448,0.6400410307065448,0.01490383361076943,0.01716150186516573,8151,52
