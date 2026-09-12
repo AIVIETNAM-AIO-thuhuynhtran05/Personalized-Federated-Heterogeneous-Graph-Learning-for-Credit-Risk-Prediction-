@@ -1,3 +1,4 @@
+# Tạo tỷ lệ tài chính và đặc trưng tuổi/thâm niên, giữ cột phân nhóm; chưa one-hot ở bước này.
 """Domain feature engineering that keeps partition metadata intact."""
 from __future__ import annotations
 import numpy as np
@@ -6,6 +7,7 @@ import pandas as pd
 PARTITION_COLUMNS = ("REGION_RATING_CLIENT_W_CITY", "OCCUPATION_TYPE")
 
 def _safe_ratio(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
+    # Chuyển mẫu số 0 thành NaN để không tạo vô cực trong các tỷ lệ.
     return numerator / denominator.replace(0, np.nan)
 
 def engineer_application_features(data: pd.DataFrame) -> pd.DataFrame:

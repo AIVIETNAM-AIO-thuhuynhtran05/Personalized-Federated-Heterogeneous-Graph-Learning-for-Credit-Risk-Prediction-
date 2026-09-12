@@ -1,3 +1,4 @@
+# Chia non-IID theo nhãn có ràng buộc tối thiểu, sau đó chia train/test cục bộ; seed giúp tái lập.
 """Seeded label-Dirichlet allocation with an explicit per-class minimum."""
 import numpy as np
 import pandas as pd
@@ -17,6 +18,7 @@ def partition_dirichlet(data, number_of_clients=10, alpha=0.5, seed=42, min_per_
         if len(rows) < number_of_clients * min_per_class:
             raise ValueError(f"Class {label} has too few rows for the requested minimum")
         rng.shuffle(rows)
+        # Dành min_per_class cho mọi client trước; phần còn lại phân bổ theo xác suất Dirichlet.
         counts = rng.multinomial(len(rows) - number_of_clients * min_per_class,
                                  rng.dirichlet(np.full(number_of_clients, alpha))) + min_per_class
         start = 0
@@ -37,6 +39,7 @@ def local_split(customers, test_size=0.2, seed=42):
     for label in (0, 1):
         rows = np.flatnonzero(customers.TARGET.to_numpy() == label)
         rng.shuffle(rows)
+        # Lớp có >=2 mẫu giữ ít nhất một train và một test; singleton chỉ vào train.
         count = min(len(rows) - 1, max(1, int(round(len(rows) * test_size)))) if len(rows) >= 2 else 0
         test[rows[:count]] = True
     return pd.DataFrame({"SK_ID_CURR": customers.SK_ID_CURR.to_numpy(),

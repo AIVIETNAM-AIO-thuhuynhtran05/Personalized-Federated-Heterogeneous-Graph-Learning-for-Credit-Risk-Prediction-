@@ -1,3 +1,4 @@
+# Tiện ích application riêng: làm sạch và tạo đặc trưng; không phải bước chuẩn bị sáu bảng graph.
 """Clean application_train and create domain features."""
 from __future__ import annotations
 import argparse, json, sys

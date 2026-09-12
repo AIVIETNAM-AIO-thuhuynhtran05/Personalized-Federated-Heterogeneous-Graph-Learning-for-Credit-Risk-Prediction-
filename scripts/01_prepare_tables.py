@@ -1,3 +1,4 @@
+# Bước 1: raw → interim/tables. Lọc cột thiếu trước partition; đây chưa phải lọc chỉ trên local-train.
 """Merge bureau history, then drop columns with >80% missing in each table."""
 from __future__ import annotations
 
@@ -44,6 +45,7 @@ def prepare_tables(raw_dir: Path, output_dir: Path, threshold: float = 0.80) -> 
             df = merge_bureau_balance(df, balance)
             del balance
         before = df.shape[1]
+        # Giữ lựa chọn cột nhất quán với application_train thay vì học ngưỡng riêng trên application_test.
         if name == "application_test":
             dropped = [col for col in train_dropped if col in df.columns]
             cleaned = df.drop(columns=dropped)

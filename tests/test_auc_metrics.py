@@ -1,3 +1,4 @@
+# Kiểm tra cách tính PR-AUC khác average precision và cách biểu diễn metric không xác định.
 import pytest
 from src.evaluation.metrics import auc_metrics
 

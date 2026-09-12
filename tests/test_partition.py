@@ -1,3 +1,4 @@
+# Khung kiểm thử partition hiện chưa có nội dung thực thi.
 import pandas as pd
 
 rows = []

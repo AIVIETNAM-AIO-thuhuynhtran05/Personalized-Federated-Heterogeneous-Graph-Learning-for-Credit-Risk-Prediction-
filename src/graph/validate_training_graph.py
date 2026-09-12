@@ -1,3 +1,4 @@
+# Kiểm tra hợp đồng tensor, split, ownership, schema và cạnh reverse trước khi train local-only.
 """Check graph isolation and tensor contracts before training."""
 import numpy as np
 from src.graph.schema import NODE_TABLES, TRANSACTION_TYPES, GRAPH_SCHEMA_VERSION
@@ -15,6 +16,7 @@ def validate_training_graph(graph, manifest):
     for key in ("train_mask", "test_mask"):
         if graph[key].dtype != np.bool_ or graph[key].shape != y.shape:
             raise ValueError(f"Invalid {key}")
+    # Mỗi Customer thuộc đúng một split, không vừa train vừa test và không bị bỏ sót.
     if (graph["train_mask"] & graph["test_mask"]).any() or not (graph["train_mask"] | graph["test_mask"]).all():
         raise ValueError("Train/test masks must be disjoint and exhaustive")
     if len(graph["customer_ids"]) != len(y) or len(np.unique(graph["customer_ids"])) != len(y):
@@ -52,6 +54,7 @@ def validate_training_graph(graph, manifest):
                 raise ValueError(f"Out-of-range edge: {relation}")
             if not np.array_equal(graph[f"owner__{src}"][edge[0]], graph[f"owner__{dst}"][edge[1]]):
                 raise ValueError(f"Cross-customer edge: {relation}")
+        # Kiểm tra cạnh reverse đúng từng cặp nguồn/đích, không chỉ kiểm tra số lượng cạnh.
         if not kind.startswith("rev_"):
             if not np.array_equal(edge[::-1], graph[f"edge__{dst}__rev_{kind}__{src}"]):
                 raise ValueError(f"Incorrect reverse edge: {relation}")

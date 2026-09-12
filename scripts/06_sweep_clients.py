@@ -1,3 +1,4 @@
+# Mỗi cặp số client/seed có partition, encoder, graph và kết quả riêng; không tái dùng encoder khác split.
 """Sweep client count, fitting one fresh pooled-train transformer per experiment."""
 import argparse
 import json
@@ -21,10 +22,12 @@ def sweep(input_dir, output_dir, client_counts=(10, 20, 30, 40, 50), alpha=0.5,
     output_dir.mkdir(parents=True, exist_ok=True)
     for seed in seeds:
         for count in client_counts:
+            # Đường dẫn hiện phân biệt N và seed; chạy lại cùng cặp sẽ dùng lại thư mục đầu ra này.
             root = output_dir / f"n_{count:02d}_seed_{seed}"
             client_dir, graph_dir = root / "clients", root / "graphs"
             report = partition_tables(input_dir, client_dir, count, alpha=alpha, seed=seed,
                                       test_size=test_size, min_per_class=min_per_class)
+            # N/seed khác tạo split khác nên phải fit encoder riêng, không dùng encoder từ vòng trước.
             encoder = fit_shared_encoder(client_dir, root / "shared_encoder.json")
             graph_dir.mkdir(parents=True, exist_ok=True)
             for client in report["clients"]:

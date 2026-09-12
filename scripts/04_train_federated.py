@@ -1,3 +1,4 @@
+# Bước 4: gọi thí nghiệm FedAvg kèm local-only; các tham số CLI quyết định ngân sách train.
 """Train FedAvg and independent local-only GNNs; log both AUC readouts each round."""
 import argparse
 from pathlib import Path

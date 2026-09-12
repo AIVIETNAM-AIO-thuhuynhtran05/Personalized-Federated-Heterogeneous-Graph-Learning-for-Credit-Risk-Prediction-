@@ -1,3 +1,4 @@
+# Mỗi client có mô hình/Adam độc lập; khởi tạo cùng seed và lưu checkpoint epoch cuối.
 """Independent client GNN training using shared preprocessing and fixed epochs."""
 import json
 from pathlib import Path
@@ -42,11 +43,13 @@ def train_clients(graph_dir: Path, output_dir: Path, clients=None, epochs=20, ba
         graph = load_graph(graph_dir / f"{name}.npz")
         if graph["metadata"]["client"] != name:
             raise ValueError("Graph client identity differs from filename")
+        # Xác minh graph trước khi dựng model; chiều đặc trưng/quan hệ phải khớp giữa client.
         config = {**validate_training_graph(graph, manifest), "hidden": hidden, "layers": layers}
         if expected_config is not None and config != expected_config:
             raise ValueError("Clients have incompatible feature dimensions or relations")
         expected_config = config
         n_train, n_test = int(graph["train_mask"].sum()), int(graph["test_mask"].sum())
+        # Client không có train được bỏ qua, không báo điểm của mô hình chưa học.
         if n_train == 0:
             summary.append({"client": name, "status": "skipped_no_train", "train_count": 0, "test_count": n_test,
                             "auc": None, "roc_auc": None, "pr_auc": None, "average_precision": None})
@@ -55,6 +58,7 @@ def train_clients(graph_dir: Path, output_dir: Path, clients=None, epochs=20, ba
             torch.manual_seed(seed)
             np.random.seed(seed)
             model = HeteroGNN(**config).to(device)
+            # Một optimizer tồn tại suốt các epoch của client này, không dùng chung với client khác.
             optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
             directory = output_dir / name
             directory.mkdir(parents=True, exist_ok=True)
@@ -68,6 +72,7 @@ def train_clients(graph_dir: Path, output_dir: Path, clients=None, epochs=20, ba
                 history.append({"epoch": epoch, **stats, **metrics})
                 pd.DataFrame(history).to_csv(directory / "history.csv", index=False)
                 print(f"{name} epoch {epoch}/{epochs}: loss={stats['train_loss']:.5f}, ROC-AUC={metrics['roc_auc']}, PR-AUC={metrics['pr_auc']}", flush=True)
+            # Lưu epoch cuối cùng theo protocol; các metric test trong history chỉ phục vụ báo cáo.
             torch.save({"model": {k: v.detach().cpu() for k, v in model.state_dict().items()},
                         "config": config, "epoch": epochs, "client": name,
                         "encoder_fingerprint": manifest["encoder_fingerprint"],

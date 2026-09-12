@@ -1,3 +1,4 @@
+# Kiểm tra schema, ownership và cạnh ngược xuyên các bước partition → graph trên dữ liệu tổng hợp.
 import json
 from pathlib import Path
 import tempfile

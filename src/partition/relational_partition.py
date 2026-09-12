@@ -1,3 +1,4 @@
+# Chia Customer trước, chuyển các bảng lịch sử theo SK_ID_CURR sau; giữ schema chung giữa client.
 """Distribute globally prepared tables without selecting features per client."""
 from pathlib import Path
 import json
@@ -33,6 +34,7 @@ def partition_tables(input_dir: Path, output_dir: Path, number_of_clients: int =
         clients, assignments = partition_non_iid(customers, tuple(partition_columns), number_of_clients)
     else:
         raise ValueError(f"Unknown strategy: {strategy}")
+    # Ánh xạ này là nguồn xác định client cho mọi hàng lịch sử.
     owner = assignments.set_index("SK_ID_CURR")["client_id"]
     output_dir.mkdir(parents=True, exist_ok=True)
     report = {"num_clients": number_of_clients, "partition_columns": list(partition_columns),
@@ -43,6 +45,7 @@ def partition_tables(input_dir: Path, output_dir: Path, number_of_clients: int =
         directory = output_dir / f"client_{client_id:03d}"
         directory.mkdir(parents=True, exist_ok=True)
         frame.to_csv(directory / "application_train.csv", index=False)
+        # Seed riêng theo client; chỉ chia Customer, lịch sử đi theo Customer tương ứng.
         split = local_split(frame, test_size, seed + client_id)
         split.to_csv(directory / "customer_split.csv", index=False)
         report["split_counts"][directory.name] = {
@@ -56,10 +59,12 @@ def partition_tables(input_dir: Path, output_dir: Path, number_of_clients: int =
         assigned = unassigned = 0
         print(f"Partitioning {name}...", flush=True)
         for chunk in pd.read_csv(input_dir / f"{name}.csv", chunksize=chunksize):
+            # ID không có trong population nhận NaN và được đếm unassigned, không đưa vào client.
             ids = chunk.SK_ID_CURR.map(owner)
             unassigned += int(ids.isna().sum())
             assigned += int(ids.notna().sum())
             for client_id, rows in chunk.groupby(ids):
+                # Ghi nối chunk sau header đã tạo; không lọc cột riêng cho từng client.
                 rows.to_csv(output_dir / f"client_{int(client_id):03d}" / f"{name}.csv",
                             mode="a", header=False, index=False)
         report["tables"][name] = {"assigned_rows": assigned, "unassigned_rows": unassigned}

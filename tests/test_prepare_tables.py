@@ -1,3 +1,4 @@
+# Kiểm tra tổng hợp bureau không nhân hàng, chọn tháng mới nhất và bảo vệ khóa khi lọc cột thiếu.
 import importlib.util
 from pathlib import Path
 

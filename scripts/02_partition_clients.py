@@ -1,3 +1,4 @@
+# Bước 2: chia client và train/test. CLI là cấu hình thực thi; script không tự nạp YAML.
 """Partition prepared relational tables, then split customers locally by TARGET."""
 from __future__ import annotations
 import argparse, json, sys

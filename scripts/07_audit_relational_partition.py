@@ -1,3 +1,4 @@
+# Audit dữ liệu theo ownership và số lần xuất hiện cặp khóa; đọc chunk và dùng SQLite để hạn chế RAM.
 
 """
 Audit FK ownership and exact key-pair multiplicities using bounded-memory reads.

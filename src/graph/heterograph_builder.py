@@ -1,3 +1,4 @@
+# Ghép node, cạnh và đặc trưng; encoder có mặt tạo NPZ huấn luyện, encoder=None chỉ xuất topology.
 """Build client-local graphs using a previously fitted shared train-only encoder."""
 from pathlib import Path
 import json
@@ -31,10 +32,12 @@ def build_client_graph(client_dir: Path, output_dir: Path, schema: dict, encoder
     edges, missing = build_edges(nodes)
     if encoder is not None:
         split_path = client_dir / "customer_split.csv"
+        # Không cho dùng encoder cũ khi nội dung split đã đổi.
         if hashlib.sha256(split_path.read_bytes()).hexdigest() != encoder["split_hashes"][client_dir.name]:
             raise ValueError("Split changed since encoder fit; refit on current local-train rows")
         split = pd.read_csv(split_path).set_index("SK_ID_CURR")
         customers = tables["application_train"]
+        # Căn thứ tự mask theo thứ tự Customer trong graph, không dựa thứ tự CSV split.
         split = split.loc[customers.SK_ID_CURR]
         train = split.train_mask.to_numpy(dtype=bool)
         test = split.test_mask.to_numpy(dtype=bool)
@@ -48,11 +51,13 @@ def build_client_graph(client_dir: Path, output_dir: Path, schema: dict, encoder
             payload[f"x__{node_type}"] = transform_table(tables[table], encoder["tables"][table])
             if node_type in TRANSACTION_TYPES:
                 flag = tables[table].is_orphan_prev.to_numpy(dtype=np.float32)
+                # Thêm cờ cấu trúc ở chiều cuối, giữ nguyên 0/1 thay vì chuẩn hóa bằng encoder.
                 payload[f"x__{node_type}"] = np.column_stack((payload[f"x__{node_type}"], flag))
                 payload[f"is_orphan_prev__{node_type}"] = flag.astype(np.int8)
             payload[f"owner__{node_type}"] = nodes[node_type].SK_ID_CURR.map(owner).to_numpy(dtype=np.int64)
             for key in nodes[node_type].columns:
                 payload[f"mapping__{node_type}__{key}"] = pd.to_numeric(nodes[node_type][key]).to_numpy(dtype=np.float64)
+        # Lưu cả quan hệ thuận/ngược, kể cả mảng rỗng để schema đồng nhất giữa client.
         payload.update({f"edge__{key}": value for key, value in edges.items()})
         metadata = {"client": client_dir.name, "encoder_fingerprint": encoder["fingerprint"],
                     "graph_schema_version": GRAPH_SCHEMA_VERSION,
@@ -64,6 +69,7 @@ def build_client_graph(client_dir: Path, output_dir: Path, schema: dict, encoder
         output_dir.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(output_dir.with_suffix(".npz"), **payload)
         return metadata
+    # Nhánh encoder=None chỉ xuất topology; entry point huấn luyện yêu cầu graph đã mã hóa.
     output_dir.mkdir(parents=True, exist_ok=True)
     for node_type, mapping in nodes.items():
         mapping.to_csv(output_dir / f"{node_type}_nodes.csv", index=False)

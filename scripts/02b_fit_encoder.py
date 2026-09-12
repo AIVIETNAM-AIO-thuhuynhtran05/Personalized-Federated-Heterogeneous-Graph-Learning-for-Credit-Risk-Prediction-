@@ -1,3 +1,4 @@
+# Bước 2b: fit một encoder chung trên hợp local-train; cần partition_report và customer_split trước.
 """Fit one shared transformer from pooled local-train rows only."""
 import argparse
 from pathlib import Path

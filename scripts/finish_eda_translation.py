@@ -1,3 +1,4 @@
+# Hoàn thiện bản dịch từ cache và nội dung cục bộ; đọc/ghi ngay khi chạy, cần notebook nguồn và cache.
 """Finish the Vietnamese Markdown translation without external services."""
 from pathlib import Path
 import json

@@ -1,3 +1,4 @@
+# Kiểm tra cạnh orphan không trùng cạnh cha, có reverse, và quarantine giữ nguyên dữ liệu nguồn.
 import json
 from pathlib import Path
 import tempfile

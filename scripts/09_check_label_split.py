@@ -1,3 +1,4 @@
+# Đối chiếu nhãn từng ID với nguồn, kiểm tra split và phát lại Dirichlet; tổng số nhãn đúng chưa đủ.
 """Check label conservation, class coverage and seeded Dirichlet replay."""
 import argparse
 import json
@@ -28,6 +29,7 @@ def check_labels(source, client_dir, output_dir):
         frame["client"] = name
         frames.append(frame)
         valid_label = frame.TARGET.isin([0, 1])
+        # Đối chiếu nhãn theo ID để bắt cả trường hợp hoán đổi nhãn nhưng tổng positive vẫn đúng.
         wrong_label = frame.SK_ID_CURR.isin(reference.index) & frame.TARGET.ne(frame.SK_ID_CURR.map(reference))
         if not valid_label.all() or wrong_label.any():
             errors.append(f"{name}: {int((~valid_label).sum())} invalid labels, {int(wrong_label.sum())} labels differ from source")
@@ -71,6 +73,7 @@ def check_labels(source, client_dir, output_dir):
     if report.get("strategy") == "dirichlet":
         keys = ("alpha", "seed", "min_per_class", "num_clients")
         if all(key in report for key in keys):
+            # Replay kiểm tra tái lập chính xác theo code/seed/thứ tự nguồn, không phải kiểm định phân phối.
             _, expected = partition_dirichlet(original, report["num_clients"], report["alpha"], report["seed"], report["min_per_class"])
             expected_names = expected.set_index("SK_ID_CURR").client_id.map(lambda value: f"client_{value:03d}")
             mismatch = int(actual.client.ne(actual.SK_ID_CURR.map(expected_names)).sum())

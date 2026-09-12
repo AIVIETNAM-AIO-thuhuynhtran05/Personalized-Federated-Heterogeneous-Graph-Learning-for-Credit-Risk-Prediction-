@@ -1,3 +1,4 @@
+# Tổng hợp lịch sử tháng thành một hàng cho mỗi hồ sơ bureau; không nhân số node.
 """Summarize monthly bureau history without duplicating bureau nodes."""
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ def merge_bureau_balance(bureau: pd.DataFrame, balance: pd.DataFrame) -> pd.Data
     if balance.duplicated([key, "MONTHS_BALANCE"]).any():
         raise ValueError("bureau_balance contains duplicate bureau/month pairs")
 
+    # Mỗi nhóm tạo đúng một hàng đặc trưng, tránh join lịch sử tháng làm lặp hồ sơ bureau.
     grouped = balance.groupby(key, sort=False)
     summary = grouped.agg(
         BB_MONTH_COUNT=("MONTHS_BALANCE", "size"),
@@ -29,6 +31,7 @@ def merge_bureau_balance(bureau: pd.DataFrame, balance: pd.DataFrame) -> pd.Data
     summary["BB_OVERDUE_MONTH_COUNT"] = summary[
         [f"BB_STATUS_{s}_COUNT" for s in ("1", "2", "3", "4", "5")]
     ].sum(axis=1)
+    # MONTHS_BALANCE lớn nhất là tháng gần nhất; giữ trạng thái của hàng đó.
     latest = balance.loc[balance["MONTHS_BALANCE"].notna()].sort_values("MONTHS_BALANCE")
     summary["BB_LATEST_STATUS"] = latest.drop_duplicates(key, keep="last").set_index(key)["STATUS"]
     return bureau.merge(summary, on=key, how="left", validate="one_to_one", sort=False)

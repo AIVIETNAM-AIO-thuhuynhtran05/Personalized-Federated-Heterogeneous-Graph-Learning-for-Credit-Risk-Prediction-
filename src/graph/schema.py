@@ -1,3 +1,4 @@
+# Hợp đồng tên node/bảng cho toàn pipeline; giao dịch dùng từng hàng làm node nên không có khóa đơn riêng.
 """Six node types; all graph construction happens inside one client."""
 NODE_TABLES = {
     "customer": ("application_train", "SK_ID_CURR"),

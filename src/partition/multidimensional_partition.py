@@ -1,3 +1,4 @@
+# Gán cả nhóm vùng/nghề vào cùng client bằng hash ổn định; không bảo đảm các client cân bằng.
 """Semantic non-IID client partitioning."""
 from __future__ import annotations
 import hashlib
@@ -7,6 +8,7 @@ import pandas as pd
 DEFAULT_PARTITION_COLUMNS = ("REGION_RATING_CLIENT_W_CITY", "OCCUPATION_TYPE")
 
 def _stable_bucket(value: str, number_of_clients: int) -> int:
+    # Dùng SHA-256 thay hash() của Python để phép gán không đổi giữa các tiến trình.
     return int(hashlib.sha256(value.encode("utf-8")).hexdigest()[:16], 16) % number_of_clients
 
 def partition_non_iid(data: pd.DataFrame,

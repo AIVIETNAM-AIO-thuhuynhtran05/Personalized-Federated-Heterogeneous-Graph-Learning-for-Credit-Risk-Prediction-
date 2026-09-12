@@ -1,3 +1,4 @@
+# Bước 3: bảng từng client + encoder → graph NPZ và manifest; không fit encoder trong bước này.
 """Build one encoded six-type graph with Customer train/test masks per client."""
 import argparse
 import json
@@ -22,6 +23,7 @@ def main():
         parser.error("Missing partition_report.json. Run scripts/02_partition_clients.py first.")
     report = json.loads((args.input_dir / "partition_report.json").read_text(encoding="utf-8"))
     encoder = json.loads(args.encoder.read_text(encoding="utf-8"))
+    # Dùng danh sách manifest partition thay vì quét thư mục, tránh lấy nhầm client cũ còn trên đĩa.
     for client in report["clients"]:
         print(f"Building {client}...", flush=True)
         build_client_graph(args.input_dir / client, args.output_dir / client, report["schema"], encoder)

@@ -1,3 +1,4 @@
+# Kiểm tra audit phát hiện sai số lần xuất hiện khóa và không nhầm orphan nguồn với lỗi phân bổ.
 import importlib.util
 from pathlib import Path
 import tempfile

@@ -1,3 +1,4 @@
+# Tiện ích dịch notebook cũ: có gọi dịch qua mạng; cần notebook nguồn và nbformat, không thuộc pipeline train.
 """Create a Vietnamese reader-facing copy of notebooks/01_eda.ipynb."""
 
 from __future__ import annotations

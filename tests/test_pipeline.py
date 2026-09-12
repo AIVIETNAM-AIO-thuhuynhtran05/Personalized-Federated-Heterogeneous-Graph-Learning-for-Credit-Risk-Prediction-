@@ -1,3 +1,4 @@
+# Script audit artifact thực tế, không phải unit test tự sinh dữ liệu; một số mô tả schema là phiên bản cũ.
 """Kiểm tra end-to-end pipeline federated heterogeneous GNN cho Home Credit.
 
 Chạy:

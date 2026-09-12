@@ -1,3 +1,4 @@
+# Kiểm tra ngưỡng thiếu nghiêm ngặt và bảo toàn các cột phục vụ partition khi tạo đặc trưng.
 import numpy as np
 import pandas as pd
 from src.preprocessing.clean_application import drop_high_missing_columns

@@ -1,3 +1,4 @@
+# ROC-AUC, PR-AUC hình thang và average precision; tập rỗng hoặc một lớp trả None thay vì điểm giả.
 """AUC is undefined for empty or single-class local test sets."""
 import numpy as np
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc, average_precision_score
@@ -10,9 +11,11 @@ def auc_metrics(labels, scores):
     if not np.isin(labels, [0, 1]).all() or not np.isfinite(scores).all():
         raise ValueError("Expected binary labels and finite prediction scores")
     roc_auc = pr_auc = average_precision = None
+    # Chỉ tính khi có cả hai lớp; None được xuất thành null hoặc ô CSV trống.
     if len(np.unique(labels)) == 2:
         roc_auc = float(roc_auc_score(labels, scores))
         precision, recall, _ = precision_recall_curve(labels, scores)
+        # Tích phân hình thang của đường PR, khác cách tổng có trọng số của average precision.
         pr_auc = float(auc(recall, precision))
         average_precision = float(average_precision_score(labels, scores))
     # Keep auc as a backward-compatible alias; PR-AUC uses trapezoidal integration.

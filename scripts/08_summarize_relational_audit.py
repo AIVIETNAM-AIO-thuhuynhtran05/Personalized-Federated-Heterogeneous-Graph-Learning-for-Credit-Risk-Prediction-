@@ -1,3 +1,4 @@
+# Tạo báo cáo tóm tắt và notebook từ JSON audit có sẵn; mã chạy ngay khi file được thực thi/import.
 """Create a portable-report input and a companion inspection notebook from the audit."""
 import json
 from pathlib import Path

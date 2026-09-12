@@ -1,3 +1,4 @@
+# Phân biệt thiếu Previous có thể giữ lại với ownership sai phải cách ly; không sửa DataFrame nguồn tại chỗ.
 """Keep resolvable transactions; quarantine invalid customer ownership for review."""
 import pandas as pd
 from src.graph.schema import NODE_TABLES, TRANSACTION_TYPES
@@ -19,6 +20,7 @@ def prepare_transaction_nodes(tables):
         mismatch = exists & frame.SK_ID_CURR.ne(frame.SK_ID_PREV.map(previous_owner)).fillna(True)
         reason = pd.Series("", index=frame.index, dtype="string")
         reason.loc[mismatch] = "previous_customer_mismatch"
+        # Lỗi Customer được ưu tiên nếu một hàng đồng thời có nhiều lỗi ownership.
         reason.loc[~valid_customer] = "customer_not_in_client"
         rejected = reason.ne("")
         review = frame.loc[rejected].copy()
@@ -26,6 +28,7 @@ def prepare_transaction_nodes(tables):
         review["quarantine_reason"] = reason.loc[rejected]
         quarantine[table] = review
         kept = frame.loc[~rejected].copy()
+        # Thiếu Previous vẫn được giữ nếu Customer hợp lệ; cờ này điều khiển cạnh fallback.
         kept["is_orphan_prev"] = (~exists.loc[~rejected]).astype("int8")
         tables[table] = kept
     return tables, quarantine

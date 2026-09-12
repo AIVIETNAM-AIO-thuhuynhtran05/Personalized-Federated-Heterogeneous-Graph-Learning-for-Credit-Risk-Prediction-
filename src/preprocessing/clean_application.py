@@ -1,3 +1,4 @@
+# Quy tắc làm sạch application và lọc cột thiếu; tiện ích clean_application thuộc luồng application riêng.
 """Cleaning rules for the Home Credit application table."""
 from __future__ import annotations
 import pandas as pd
@@ -12,6 +13,7 @@ def drop_high_missing_columns(data: pd.DataFrame, threshold: float = 0.80,
         raise ValueError("threshold must be between 0 and 1")
     fractions = data.isna().mean()
     protected = set(protected_columns)
+    # Chỉ loại khi tỷ lệ > threshold, không loại khi bằng; cột protected luôn được giữ.
     dropped = [c for c, value in fractions.items() if value > threshold and c not in protected]
     return data.drop(columns=dropped).copy(), dropped
 

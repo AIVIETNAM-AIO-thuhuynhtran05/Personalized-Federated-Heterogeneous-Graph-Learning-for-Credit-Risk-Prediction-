@@ -1,3 +1,4 @@
+# Entry point train local-only độc lập; dùng graph đã mã hóa và ghi kết quả theo từng client.
 """Train independent GNNs on all clients or selected clients; no server aggregation."""
 import argparse
 from pathlib import Path

@@ -1,3 +1,4 @@
+# Đọc checkpoint cuối và graph của lần chạy để tính lại metric; không chọn checkpoint theo test.
 """Re-evaluate final saved federated and local-only checkpoints on local test masks."""
 import argparse
 import json
@@ -22,6 +23,7 @@ def evaluate(run_dir, device="cpu"):
     pooled = {method: ([], []) for method in ("federated", "local_only")}
     for client in settings["manifest"]["clients"]:
         graph = load_graph(Path(settings["graph_dir"]) / f"{client}.npz")
+        # Ngăn đánh giá checkpoint với encoder/schema khác lần huấn luyện.
         if graph["metadata"]["encoder_fingerprint"] != settings["manifest"]["encoder_fingerprint"]:
             raise ValueError("Graph encoder differs from the training run")
         if graph["metadata"].get("graph_schema_version", "legacy") != settings.get("graph_schema_version", "legacy"):
@@ -34,6 +36,7 @@ def evaluate(run_dir, device="cpu"):
             rows.append({"client": client, "method": method, **auc_metrics(y, scores)})
             pooled[method][0].extend(y.tolist())
             pooled[method][1].extend(scores.tolist())
+    # Ghép nhãn và xác suất trước khi tính pooled metric; không lấy mean metric từng client.
     for method, (y, scores) in pooled.items():
         rows.append({"client": "pooled", "method": method, **auc_metrics(y, scores)})
     pd.DataFrame(rows).to_csv(run_dir / "final_evaluation.csv", index=False)
