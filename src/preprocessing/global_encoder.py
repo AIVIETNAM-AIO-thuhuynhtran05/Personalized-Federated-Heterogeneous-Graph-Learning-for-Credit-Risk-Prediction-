@@ -181,7 +181,9 @@ def transform_table(frame: pd.DataFrame, definition: dict) -> np.ndarray:
             vocabulary = {
                 value: index + 2 for index, value in enumerate(spec["categories"])
             }
-            indices = values.astype(str).map(vocabulary).fillna(1).to_numpy(dtype=int)
+            indices = values.astype(str).map(vocabulary).fillna(1).to_numpy(
+    dtype=int, copy=True
+)
             indices[values.isna().to_numpy()] = 0
             result[np.arange(len(frame)), offset + indices] = 1
             offset += len(vocabulary) + 2
