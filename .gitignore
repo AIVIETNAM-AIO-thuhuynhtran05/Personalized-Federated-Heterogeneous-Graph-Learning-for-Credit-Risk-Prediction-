@@ -74,3 +74,8 @@ Thumbs.db
 .env
 .env.*
 
+# Generated strict centralized benchmark artifacts
+results/global_tabular_lr/
+results/global_tabular_hgb/
+results/global_gnn*/
+
