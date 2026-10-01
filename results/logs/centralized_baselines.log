@@ -1,0 +1,20 @@
+C:\Users\huynh\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch\cuda\__init__.py:56: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+17:38:20 Features: 587 numeric + 14 categorical | {'train': 215257, 'val': 46127, 'test': 46127}
+17:38:20 === Training logistic_regression ===
+17:39:12 LR: 1231 features after encoding
+17:46:34 LR: C=0.001  val AUC=0.77922
+17:47:37 LR: C=0.01  val AUC=0.78022
+17:48:25 LR: C=0.1  val AUC=0.77992
+17:48:30 logistic_regression done in 605s | val AUC=0.7802 | test AUC=0.7832
+17:48:31 === Training lightgbm ===
+C:\Users\huynh\AppData\Local\Programs\Python\Python312\Lib\site-packages\lightgbm\sklearn.py:1106: LGBMDeprecationWarning: The argument 'eval_set' is deprecated, use 'eval_X' and 'eval_y' instead.
+  eval_set = _validate_eval_set_Xy(eval_set=eval_set, eval_X=eval_X, eval_y=eval_y)
+17:50:22 lightgbm done in 105s | val AUC=0.7919 | test AUC=0.7931
+17:50:22 TEST results (threshold ch\u1ecdn trên Validation):
+                     roc_auc  pr_auc      ks      f1  precision  recall  threshold
+logistic_regression   0.7832  0.2775  0.4317  0.3376     0.2724  0.4436     0.1624
+lightgbm              0.7931  0.2951  0.4448  0.3495     0.2965  0.4256     0.1734
+[500]	valid_0's auc: 0.788528	valid_0's binary_logloss: 0.236217
+[1000]	valid_0's auc: 0.790755	valid_0's binary_logloss: 0.235351
+[1500]	valid_0's auc: 0.791834	valid_0's binary_logloss: 0.23495
