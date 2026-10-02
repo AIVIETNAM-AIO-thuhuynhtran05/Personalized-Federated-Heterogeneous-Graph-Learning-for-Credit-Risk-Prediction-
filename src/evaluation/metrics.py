@@ -45,3 +45,22 @@ def evaluate(y_true, y_prob, threshold: float) -> dict:
         "tp": int(tp), "fp": int(fp), "tn": int(tn), "fn": int(fn),
         "n": int(len(y_true)), "positive_rate": float(y_true.mean()),
     }
+
+
+def evaluate_by_client(df, prob_col: str, thresholds: dict) -> dict:
+    """df: SK_ID_CURR, client, TARGET, prob_col (chỉ các dòng Test).
+    thresholds: {client: threshold} (đã chọn trên Val). Trả về metric từng client + pooled:
+    metric không phụ thuộc threshold tính trên toàn bộ dự đoán gộp; precision/recall/F1 pooled
+    tính từ tổng ma trận nhầm lẫn của các client (mỗi client dùng threshold của mình)."""
+    per = {int(k): evaluate(g["TARGET"], g[prob_col], thresholds[k]) for k, g in df.groupby("client")}
+    pooled = evaluate(df["TARGET"], df[prob_col], 0.5)
+    tp, fp, tn, fn = (sum(m[x] for m in per.values()) for x in ["tp", "fp", "tn", "fn"])
+    precision, recall, specificity = tp / max(tp + fp, 1), tp / max(tp + fn, 1), tn / max(tn + fp, 1)
+    pooled.update({"threshold": None, "precision": precision, "recall": recall,
+                   "f1": 2 * precision * recall / max(precision + recall, 1e-12),
+                   "specificity": specificity, "balanced_accuracy": (recall + specificity) / 2,
+                   "tp": tp, "fp": fp, "tn": tn, "fn": fn})
+    weights = [m["n"] for m in per.values()]
+    pooled["client_avg_roc_auc"] = float(np.average([m["roc_auc"] for m in per.values()], weights=weights))
+    pooled["client_worst_roc_auc"] = float(min(m["roc_auc"] for m in per.values()))
+    return {"per_client": per, "pooled": pooled}

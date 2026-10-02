@@ -1,0 +1,44 @@
+# Đường dẫn của từng kịch bản chia client: xem load_scenario() trong src/utils/io.py
+# Kiến trúc + optimizer dùng chung cấu hình hetero_gnn trong model.yaml (giống Centralized)
+
+local_only:
+  max_epochs: 30
+  patience: 4
+
+fedavg:
+  rounds: 40
+  local_epochs: 1
+  # Dừng sớm khi AUC Validation (trung bình có trọng số theo số mẫu Val của client) không tăng
+  patience: 6
+
+# ---------- Personalized FL ----------
+# Fine-tune mô hình FedAvg tại từng client (epoch 0 = giữ nguyên FedAvg cũng là ứng viên)
+fedavg_ft:
+  max_epochs: 10
+  patience: 2
+  lr: 0.0005
+
+# FedProx: phạt mu/2 ||w - w_global||^2 khi train cục bộ
+fedprox:
+  rounds: 40
+  local_epochs: 1
+  patience: 6
+  mu: 0.01
+
+# FedPer: head phân loại ở lại client, phần còn lại (encoder + GNN) được chia sẻ
+fedper:
+  rounds: 40
+  local_epochs: 1
+  patience: 6
+  personal_prefixes: ["head."]
+
+# Ditto: mô hình riêng v của client, phạt lam/2 ||v - w_global||^2
+ditto:
+  rounds: 40
+  local_epochs: 1
+  patience: 6
+  lam: 0.1
+
+evaluation:
+  # Paired bootstrap trên Test của từng client để lấy khoảng tin cậy 95%
+  bootstrap_rounds: 1000
