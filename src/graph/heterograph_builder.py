@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 NON_FEATURE = {"SK_ID_CURR", "SK_ID_PREV", "SK_ID_BUREAU", "TARGET"}
 
 
-def _columns(t: str, df: pd.DataFrame) -> tuple[list[str], list[str]]:
+def node_columns(t: str, df: pd.DataFrame) -> tuple[list[str], list[str]]:
     if t == CUSTOMER:
         cat = [c for c in df.columns if df[c].dtype == object and c not in NON_FEATURE]
     else:
@@ -26,13 +26,36 @@ def _columns(t: str, df: pd.DataFrame) -> tuple[list[str], list[str]]:
     return num, cat
 
 
+def prepare_tables(tables: dict[str, pd.DataFrame], gcfg: dict):
+    """Xử lý orphan, nối cạnh, thêm đặc trưng cấu trúc (sửa `tables` tại chỗ).
+    Chỉ dùng dữ liệu của chính các khách hàng trong `tables` -> chạy cục bộ được ở từng client."""
+    report = {"missing_previous": resolve_missing_previous(tables, gcfg["orphan_policy"]["missing_previous"])}
+    report["childless"] = childless_report(tables)
+    parents = link_tables(tables)
+    add_structural_features(tables, parents)
+    roots = root_customer(parents, len(tables[CUSTOMER]))
+    return parents, roots, report
+
+
+def assemble_graph(tables, parents, xs: dict[str, torch.Tensor]) -> HeteroData:
+    data = HeteroData()
+    for t in NODE_TYPES:
+        data[t].x = xs[t]
+        data[t].num_nodes = xs[t].size(0)
+    data[CUSTOMER].y = torch.from_numpy(tables[CUSTOMER]["TARGET"].values.astype(np.float32))
+    data[CUSTOMER].sk_id_curr = torch.from_numpy(tables[CUSTOMER]["SK_ID_CURR"].values.astype(np.int64))
+    for et, ei in edge_index_dict(parents).items():
+        data[et].edge_index = ei
+    return data
+
+
 def encode_nodes(tables, roots, train_customer_mask, gcfg, seed, chunk=1_000_000):
     """Fit encoder của từng node type CHỈ trên node thuộc khách hàng Train, áp cho mọi node."""
     rng = np.random.default_rng(seed)
     xs, names, encoders = {}, {}, {}
     for t in NODE_TYPES:
         df = tables[t]
-        num, cat = _columns(t, df)
+        num, cat = node_columns(t, df)
         enc = make_linear_preprocessor(num, cat, gcfg["clip_quantiles"], gcfg["onehot_min_frequency"])
         fit_idx = np.flatnonzero(train_customer_mask[roots[t]])
         if len(fit_idx) > gcfg["encoder_fit_max_rows"]:
@@ -48,26 +71,12 @@ def encode_nodes(tables, roots, train_customer_mask, gcfg, seed, chunk=1_000_000
 
 def build_hetero_graph(cfg, gcfg, customer_ids, train_customer_ids):
     tables, bb_stats = load_node_tables(cfg, customer_ids)
-
-    report = {"bureau_balance": bb_stats}
-    report["missing_previous"] = resolve_missing_previous(tables, gcfg["orphan_policy"]["missing_previous"])
-    report["childless"] = childless_report(tables)
-
-    parents = link_tables(tables)
-    add_structural_features(tables, parents)
-    roots = root_customer(parents, len(tables[CUSTOMER]))
+    parents, roots, report = prepare_tables(tables, gcfg)
+    report["bureau_balance"] = bb_stats
     train_mask = tables[CUSTOMER]["SK_ID_CURR"].isin(set(train_customer_ids)).values
 
     xs, names, encoders = encode_nodes(tables, roots, train_mask, gcfg, cfg["seed"])
-
-    data = HeteroData()
-    for t in NODE_TYPES:
-        data[t].x = xs[t]
-        data[t].num_nodes = xs[t].size(0)
-    data[CUSTOMER].y = torch.from_numpy(tables[CUSTOMER]["TARGET"].values.astype(np.float32))
-    data[CUSTOMER].sk_id_curr = torch.from_numpy(tables[CUSTOMER]["SK_ID_CURR"].values.astype(np.int64))
-    for et, ei in edge_index_dict(parents).items():
-        data[et].edge_index = ei
+    data = assemble_graph(tables, parents, xs)
 
     report["validation"] = validate_graph(data)
     report["nodes"] = {t: int(data[t].num_nodes) for t in NODE_TYPES}

@@ -51,16 +51,17 @@ def resolve_missing_previous(tables: dict[str, pd.DataFrame], policy: str) -> di
             raise ValueError(f"Unknown missing_previous policy: {policy}")
         tables[t] = ev.reset_index(drop=True)
 
+    # Luôn có đủ cột PH_FROM_* (kể cả khi bằng 0) để mọi client có cùng schema
+    flag_cols = [f"PH_FROM_{t.upper()}" for t in EVENT_TYPES]
     if policy == "placeholder" and placeholders:
         ph = pd.concat(placeholders).groupby(["SK_ID_PREV", "SK_ID_CURR"], as_index=False).max()
-        flag_cols = [c for c in ph.columns if c.startswith("PH_FROM_")]
-        ph[flag_cols] = ph[flag_cols].fillna(0).astype(np.float32)
         ph["IS_PLACEHOLDER"] = np.float32(1)
         prev = pd.concat([prev, ph], ignore_index=True)
-        prev[flag_cols] = prev[flag_cols].fillna(0).astype(np.float32)
-        tables[PREV] = prev
         stats["placeholder_prev_created"] = int(len(ph))
         log.info("Created %d placeholder prev nodes", len(ph))
+    for c in flag_cols:
+        prev[c] = prev[c].fillna(0).astype(np.float32) if c in prev else np.float32(0)
+    tables[PREV] = prev
     return stats
 
 
