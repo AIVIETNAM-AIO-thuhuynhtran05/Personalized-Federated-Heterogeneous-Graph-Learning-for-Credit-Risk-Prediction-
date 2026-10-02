@@ -1,0 +1,6 @@
+,roc_auc,pr_auc,ks,f1,precision,recall,client_avg_roc_auc,client_worst_roc_auc
+Centralized LR,0.7832,0.2775,0.4317,0.3376,0.2724,0.4436,0.7843,0.7689
+Centralized LightGBM,0.7931,0.2951,0.4448,0.3495,0.2965,0.4256,0.7926,0.7728
+Centralized HeteroGNN,0.7858,0.2819,0.4365,0.337,0.2742,0.4372,0.7868,0.7701
+Federated Local-only HeteroGNN,0.8972,0.6666,0.6448,0.5723,0.5069,0.6571,0.7625,0.7074
+Federated FedAvg HeteroGNN,0.7704,0.2579,0.4069,0.5731,0.5014,0.6686,0.7708,0.7613

@@ -1,0 +1,37 @@
+C:\Users\huynh\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch\cuda\__init__.py:56: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+20:38:21 prev: 1413701 nodes
+20:38:40 installment: 11591592 nodes
+20:38:49 pos: 8543375 nodes
+20:39:00 cc: 3227965 nodes
+20:39:00 customer: 307511 nodes | bureau: 1465325 nodes
+20:39:06 Created 1998 placeholder prev nodes
+20:39:07 client 0: {'customer': 15514, 'bureau': 74737, 'prev': 73394, 'installment': 581455, 'pos': 436021, 'cc': 159691}
+20:39:10 Created 31565 placeholder prev nodes
+20:39:31 client 1: {'customer': 239550, 'bureau': 1142270, 'prev': 1126706, 'installment': 9052905, 'pos': 6671633, 'cc': 2532439}
+20:39:31 Created 2238 placeholder prev nodes
+20:39:32 client 2: {'customer': 21033, 'bureau': 98047, 'prev': 103279, 'installment': 757836, 'pos': 547585, 'cc': 203789}
+20:39:32 Created 975 placeholder prev nodes
+20:39:32 client 3: {'customer': 7626, 'bureau': 36598, 'prev': 36557, 'installment': 286024, 'pos': 213945, 'cc': 76578}
+20:39:33 Created 3118 placeholder prev nodes
+20:39:34 client 4: {'customer': 23788, 'bureau': 113673, 'prev': 113659, 'installment': 913372, 'pos': 674191, 'cc': 255468}
+20:39:38 encoder customer    -> 313 features (shared by all clients)
+20:39:42 encoder bureau      -> 64 features (shared by all clients)
+20:39:55 encoder prev        -> 173 features (shared by all clients)
+20:40:04 encoder installment -> 17 features (shared by all clients)
+20:40:10 encoder pos         -> 12 features (shared by all clients)
+20:40:19 encoder cc          -> 37 features (shared by all clients)
+20:40:39 Client graph nodes:
+   customer   bureau     prev  installment      pos       cc
+0     15514    74737    73394       581455   436021   159691
+1    239550  1142270  1126706      9052905  6671633  2532439
+2     21033    98047   103279       757836   547585   203789
+3      7626    36598    36557       286024   213945    76578
+4     23788   113673   113659       913372   674191   255468
+20:40:39 Orphans per client:
+   installment_missing_prev  pos_missing_prev  cc_missing_prev  placeholders  cust_no_history
+0                     48070             15967            42242          1998              105
+1                    812742            228560           693191         31565             1719
+2                     54635             17807            47267          2238              142
+3                     24641              6985            21744           975               61
+4                     79283             22302            68528          3118              173

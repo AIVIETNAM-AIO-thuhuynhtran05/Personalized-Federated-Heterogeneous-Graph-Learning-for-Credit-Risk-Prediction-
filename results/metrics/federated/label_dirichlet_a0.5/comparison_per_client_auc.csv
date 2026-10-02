@@ -1,0 +1,6 @@
+,client 0,client 1,client 2,client 3,client 4
+Centralized LR,0.7689,0.7835,0.7924,0.7824,0.7971
+Centralized LightGBM,0.7728,0.791,0.8022,0.8024,0.8102
+Centralized HeteroGNN,0.7701,0.7852,0.8002,0.7859,0.8032
+Federated Local-only HeteroGNN,0.7074,0.7665,0.7669,0.7131,0.7708
+Federated FedAvg HeteroGNN,0.7613,0.7692,0.7853,0.7618,0.7842

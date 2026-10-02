@@ -1,0 +1,108 @@
+{
+  "config": {
+    "method": "dirichlet_label",
+    "num_clients": 5,
+    "alpha": 0.5,
+    "seed": 42,
+    "constraints": {
+      "min_client_share": 0.02,
+      "min_samples_per_class_per_split": 30,
+      "max_tries": 1000
+    },
+    "output": "client_assignments.parquet"
+  },
+  "attempts": 3,
+  "clients": {
+    "0": {
+      "n": 15514,
+      "share": 0.0505,
+      "default_rate": 0.0483,
+      "positives": 749,
+      "label_js_divergence": 0.00318,
+      "split_sizes": {
+        "train": 10754,
+        "val": 2450,
+        "test": 2310
+      },
+      "split_positives": {
+        "test": 113,
+        "train": 499,
+        "val": 137
+      }
+    },
+    "1": {
+      "n": 239550,
+      "share": 0.779,
+      "default_rate": 0.0307,
+      "positives": 7343,
+      "label_js_divergence": 0.0089,
+      "split_sizes": {
+        "train": 167762,
+        "test": 36053,
+        "val": 35735
+      },
+      "split_positives": {
+        "test": 1158,
+        "train": 5101,
+        "val": 1084
+      }
+    },
+    "2": {
+      "n": 21033,
+      "share": 0.0684,
+      "default_rate": 0.7207,
+      "positives": 15159,
+      "label_js_divergence": 0.34177,
+      "split_sizes": {
+        "train": 14797,
+        "val": 3156,
+        "test": 3080
+      },
+      "split_positives": {
+        "test": 2220,
+        "train": 10684,
+        "val": 2255
+      }
+    },
+    "3": {
+      "n": 7626,
+      "share": 0.0248,
+      "default_rate": 0.1016,
+      "positives": 775,
+      "label_js_divergence": 0.00095,
+      "split_sizes": {
+        "train": 5262,
+        "test": 1194,
+        "val": 1170
+      },
+      "split_positives": {
+        "test": 120,
+        "train": 528,
+        "val": 127
+      }
+    },
+    "4": {
+      "n": 23788,
+      "share": 0.0774,
+      "default_rate": 0.0336,
+      "positives": 799,
+      "label_js_divergence": 0.00765,
+      "split_sizes": {
+        "train": 16682,
+        "val": 3616,
+        "test": 3490
+      },
+      "split_positives": {
+        "test": 113,
+        "train": 565,
+        "val": 121
+      }
+    }
+  },
+  "global_default_rate": 0.0807,
+  "size_max_min_ratio": 31.41,
+  "default_rate_range": [
+    0.0307,
+    0.7207
+  ]
+}

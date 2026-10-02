@@ -1,0 +1,21 @@
+21:06:40 POOLED TEST (h\u1ee3p Test c\u1ee7a 5 client = Test chung):
+                                roc_auc  pr_auc      ks      f1  precision  recall  client_avg_roc_auc  client_worst_roc_auc
+Centralized LR                   0.7832  0.2775  0.4317  0.3376     0.2724  0.4436              0.7843                0.7689
+Centralized LightGBM             0.7931  0.2951  0.4448  0.3495     0.2965  0.4256              0.7926                0.7728
+Centralized HeteroGNN            0.7858  0.2819  0.4365  0.3370     0.2742  0.4372              0.7868                0.7701
+Federated Local-only HeteroGNN   0.8972  0.6666  0.6448  0.5723     0.5069  0.6571              0.7625                0.7074
+Federated FedAvg HeteroGNN       0.7704  0.2579  0.4069  0.5731     0.5014  0.6686              0.7708                0.7613
+21:06:40 ROC-AUC theo client:
+                                client 0  client 1  client 2  client 3  client 4
+Centralized LR                    0.7689    0.7835    0.7924    0.7824    0.7971
+Centralized LightGBM              0.7728    0.7910    0.8022    0.8024    0.8102
+Centralized HeteroGNN             0.7701    0.7852    0.8002    0.7859    0.8032
+Federated Local-only HeteroGNN    0.7074    0.7665    0.7669    0.7131    0.7708
+Federated FedAvg HeteroGNN        0.7613    0.7692    0.7853    0.7618    0.7842
+21:06:40 F1 theo client:
+                                client 0  client 1  client 2  client 3  client 4
+Centralized LR                    0.2359    0.1929    0.5981    0.4000    0.1946
+Centralized LightGBM              0.2435    0.2086    0.5807    0.4419    0.2085
+Centralized HeteroGNN             0.2204    0.1963    0.5937    0.3688    0.1953
+Federated Local-only HeteroGNN    0.1974    0.1920    0.8490    0.3323    0.1606
+Federated FedAvg HeteroGNN        0.1942    0.1872    0.8579    0.3691    0.1723
