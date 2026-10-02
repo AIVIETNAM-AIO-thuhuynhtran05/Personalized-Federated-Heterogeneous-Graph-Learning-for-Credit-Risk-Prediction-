@@ -34,6 +34,22 @@ def read_raw(cfg: dict, table: str, **kwargs) -> pd.DataFrame:
     return downcast(pd.read_csv(path, **kwargs))
 
 
+def load_scenario(name: str | None = None) -> tuple[str, dict, dict]:
+    """Cấu hình + đường dẫn riêng của một kịch bản chia client."""
+    pcfg = load_config("partition.yaml")
+    name = name or pcfg["scenario"]
+    scfg = {**pcfg["scenarios"][name], "constraints": pcfg["constraints"]}
+    cfg = load_config()
+    processed, results = resolve(cfg["paths"]["processed_dir"]), resolve(cfg["paths"]["results_dir"])
+    paths = {
+        "assignments": processed / "partitions" / f"{name}.parquet",
+        "graphs": processed / "client_graphs" / name,
+        "metrics": results / "metrics" / "federated" / name,
+        "checkpoints": results / "checkpoints" / "federated" / name,
+    }
+    return name, scfg, paths
+
+
 def save_json(obj, path: str | Path) -> None:
     path = resolve(path)
     path.parent.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,27 @@
+# Kịch bản đang dùng (ghi đè bằng --scenario khi chạy script 02-05)
+scenario: region_territory_a0.5
+
+scenarios:
+  # KỊCH BẢN CHÍNH. Mỗi vùng (REGION_POPULATION_RELATIVE: 81 giá trị, mỗi giá trị ứng với đúng
+  # một REGION_RATING_CLIENT) do đúng 1 tổ chức phụ trách; quy mô tổ chức q ~ Dirichlet(alpha).
+  # Khách hàng thuộc tổ chức phụ trách vùng nơi họ sinh sống.
+  region_territory_a0.5:
+    method: region_territory
+    region_col: REGION_POPULATION_RELATIVE
+    num_clients: 5
+    alpha: 0.5
+    seed: 42
+
+  # STRESS TEST (phi thực tế): Dirichlet trên nhãn TARGET -> lệch nhãn cực đoan
+  label_dirichlet_a0.5:
+    method: dirichlet_label
+    num_clients: 5
+    alpha: 0.5
+    seed: 42
+
+constraints:
+  # Client nhỏ nhất phải chiếm ít nhất ngần này tỷ lệ khách hàng
+  min_client_share: 0.03
+  # Mỗi client cần đủ mẫu mỗi lớp ở Train/Val/Test để train, chọn threshold và đánh giá
+  min_samples_per_class_per_split: 30
+  max_tries: 1000
