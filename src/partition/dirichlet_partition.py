@@ -1,46 +1,59 @@
-# Chia non-IID theo nhãn có ràng buộc tối thiểu, sau đó chia train/test cục bộ; seed giúp tái lập.
-"""Seeded label-Dirichlet allocation with an explicit per-class minimum."""
+"""Chia khách hàng vào K client theo Dirichlet trên nhãn (label-skew + quantity-skew).
+
+Với mỗi lớp c: p_c ~ Dir(alpha * 1_K), các mẫu của lớp c được chia cho client theo tỷ lệ p_c.
+alpha càng nhỏ -> càng non-IID (số mẫu và tỷ lệ default giữa các client càng chênh lệch).
+"""
+import logging
+
 import numpy as np
 import pandas as pd
 
-
-def partition_dirichlet(data, number_of_clients=10, alpha=0.5, seed=42, min_per_class=2):
-    if number_of_clients < 2 or alpha <= 0 or min_per_class < 0:
-        raise ValueError("Require N>=2, alpha>0 and min_per_class>=0")
-    if data.TARGET.isna().any() or not set(data.TARGET.unique()) <= {0, 1}:
-        raise ValueError("TARGET must be binary and non-null")
-    if not data.SK_ID_CURR.is_unique or data.SK_ID_CURR.isna().any():
-        raise ValueError("Customer IDs must be unique and non-null")
-    rng = np.random.default_rng(seed)
-    assignment = np.full(len(data), -1, dtype=int)
-    for label in (0, 1):
-        rows = np.flatnonzero(data.TARGET.to_numpy() == label)
-        if len(rows) < number_of_clients * min_per_class:
-            raise ValueError(f"Class {label} has too few rows for the requested minimum")
-        rng.shuffle(rows)
-        # Dành min_per_class cho mọi client trước; phần còn lại phân bổ theo xác suất Dirichlet.
-        counts = rng.multinomial(len(rows) - number_of_clients * min_per_class,
-                                 rng.dirichlet(np.full(number_of_clients, alpha))) + min_per_class
-        start = 0
-        for client, count in enumerate(counts):
-            assignment[rows[start:start + count]] = client
-            start += count
-    clients = {i: data.iloc[np.flatnonzero(assignment == i)].copy() for i in range(number_of_clients)}
-    assignments = pd.DataFrame({"SK_ID_CURR": data.SK_ID_CURR.to_numpy(), "client_id": assignment})
-    return clients, assignments
+log = logging.getLogger(__name__)
 
 
-def local_split(customers, test_size=0.2, seed=42):
-    """Stratify within each client, rounding per class; singletons remain train."""
-    if not 0 < test_size < 1:
-        raise ValueError("test_size must be strictly between 0 and 1")
-    rng = np.random.default_rng(seed)
-    test = np.zeros(len(customers), dtype=bool)
-    for label in (0, 1):
-        rows = np.flatnonzero(customers.TARGET.to_numpy() == label)
-        rng.shuffle(rows)
-        # Lớp có >=2 mẫu giữ ít nhất một train và một test; singleton chỉ vào train.
-        count = min(len(rows) - 1, max(1, int(round(len(rows) * test_size)))) if len(rows) >= 2 else 0
-        test[rows[:count]] = True
-    return pd.DataFrame({"SK_ID_CURR": customers.SK_ID_CURR.to_numpy(),
-                         "train_mask": ~test, "test_mask": test})
+def dirichlet_label_partition(labels: np.ndarray, num_clients: int, alpha: float,
+                              rng: np.random.Generator) -> np.ndarray:
+    client = np.empty(len(labels), dtype=np.int64)
+    for c in np.unique(labels):
+        idx = rng.permutation(np.flatnonzero(labels == c))
+        p = rng.dirichlet(alpha * np.ones(num_clients))
+        cuts = (np.cumsum(p) * len(idx)).astype(int)[:-1]
+        for k, part in enumerate(np.split(idx, cuts)):
+            client[part] = k
+    return client
+
+
+def _satisfies(df: pd.DataFrame, num_clients: int, cons: dict) -> bool:
+    """Mỗi client phải đủ lớn và có đủ mẫu dương/âm ở cả Train/Val/Test để train và đánh giá."""
+    share = df["client"].value_counts(normalize=True).reindex(range(num_clients), fill_value=0)
+    if (share < cons["min_client_share"]).any():
+        return False
+    counts = df.groupby(["client", "split", "TARGET"]).size()
+    full = pd.MultiIndex.from_product([range(num_clients), ["train", "val", "test"], [0, 1]])
+    return bool((counts.reindex(full, fill_value=0) >= cons["min_samples_per_class_per_split"]).all())
+
+
+def partition_clients(splits: pd.DataFrame, pcfg: dict, regions: pd.Series | None = None
+                      ) -> tuple[pd.DataFrame, dict]:
+    """`splits` gồm SK_ID_CURR, TARGET, split (split chung). Trả về thêm cột `client`.
+    Split Train/Val/Test được giữ nguyên -> hợp các Test của client = Test của nhánh Centralized.
+    `regions` (cùng thứ tự với splits) bắt buộc khi method = region_territory."""
+    from src.partition.region_partition import region_territory_partition
+
+    rng = np.random.default_rng(pcfg["seed"])
+    cons = pcfg["constraints"]
+    out = splits[["SK_ID_CURR", "TARGET", "split"]].copy()
+    for attempt in range(1, cons["max_tries"] + 1):
+        info = {}
+        if pcfg["method"] == "dirichlet_label":
+            out["client"] = dirichlet_label_partition(out["TARGET"].values, pcfg["num_clients"],
+                                                      pcfg["alpha"], rng)
+        elif pcfg["method"] == "region_territory":
+            out["client"], info = region_territory_partition(regions.reset_index(drop=True),
+                                                             pcfg["num_clients"], pcfg["alpha"], rng)
+        else:
+            raise ValueError(f"Unknown partition method: {pcfg['method']}")
+        if _satisfies(out, pcfg["num_clients"], cons):
+            log.info("Partition accepted at attempt %d", attempt)
+            return out, {"attempts": attempt, **info}
+    raise RuntimeError("Không tìm được partition thỏa ràng buộc; nới constraints hoặc tăng alpha")

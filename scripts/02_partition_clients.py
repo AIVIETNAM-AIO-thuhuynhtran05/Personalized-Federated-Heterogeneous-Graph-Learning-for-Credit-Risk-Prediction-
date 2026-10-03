@@ -1,31 +1,57 @@
-# Bước 2: chia client và train/test. CLI là cấu hình thực thi; script không tự nạp YAML.
-"""Partition prepared relational tables, then split customers locally by TARGET."""
-from __future__ import annotations
-import argparse, json, sys
+"""Chia khách hàng vào K client theo kịch bản trong configs/partition.yaml, giữ nguyên split chung.
+
+    python scripts/02_partition_clients.py                                  # kịch bản mặc định
+    python scripts/02_partition_clients.py --scenario label_dirichlet_a0.5
+"""
+import argparse
+import logging
+import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-from src.partition.relational_partition import partition_tables
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-def main() -> None:
+import pandas as pd
+
+from src.partition.dirichlet_partition import partition_clients
+from src.partition.partition_diagnostics import PROFILE_COLS, partition_report
+from src.utils.io import load_config, load_scenario, read_raw, resolve, save_json
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
+log = logging.getLogger("partition")
+
+
+def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input-dir", type=Path, default=ROOT / "data/interim/tables")
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "data/processed/clients")
-    parser.add_argument("--num-clients", type=int, default=10)
-    parser.add_argument("--strategy", choices=["dirichlet", "semantic"], default="dirichlet")
-    parser.add_argument("--alpha", type=float, default=0.5)
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--test-size", type=float, default=0.2)
-    parser.add_argument("--min-per-class", type=int, default=2)
-    parser.add_argument("--partition-columns", nargs="+",
-                        default=["REGION_RATING_CLIENT_W_CITY", "OCCUPATION_TYPE"])
+    parser.add_argument("--scenario")
     args = parser.parse_args()
-    report = partition_tables(args.input_dir, args.output_dir, args.num_clients,
-                              tuple(args.partition_columns), strategy=args.strategy,
-                              alpha=args.alpha, seed=args.seed, test_size=args.test_size,
-                              min_per_class=args.min_per_class)
-    print(json.dumps(report["tables"], indent=2))
+
+    cfg = load_config()
+    name, scfg, paths = load_scenario(args.scenario)
+    splits = pd.read_parquet(resolve(cfg["paths"]["processed_dir"]) / cfg["files"]["splits"])
+    profile = read_raw(cfg, "application_train", usecols=["SK_ID_CURR", *PROFILE_COLS])
+    profile = profile.set_index("SK_ID_CURR").loc[splits["SK_ID_CURR"]].reset_index()
+
+    regions = profile[scfg["region_col"]] if scfg["method"] == "region_territory" else None
+    assign, info = partition_clients(splits, scfg, regions)
+    paths["assignments"].parent.mkdir(parents=True, exist_ok=True)
+    assign.to_parquet(paths["assignments"], index=False)
+
+    report = {"scenario": name, "config": scfg, **info, **partition_report(assign, profile)}
+    save_json(report, paths["metrics"] / "partition_report.json")
+
+    rows = {}
+    for k, c in report["clients"].items():
+        rows[k] = {"n": c["n"], "share": c["share"], "default_rate": c["default_rate"],
+                   "regions": c["n_regions"], "rating1": c["region_rating_share"].get(1, 0),
+                   "rating3": c["region_rating_share"].get(3, 0), "med_income": c["median_income"],
+                   "ext2": c["mean_ext_source_2"], "W(ext2)": c["feature_shift_wasserstein"]["EXT_SOURCE_2"],
+                   "W(income)": c["feature_shift_wasserstein"]["LOG_INCOME"],
+                   "JS(label)": c["label_js_divergence"],
+                   **{f"n_{s}": c["split_sizes"].get(s, 0) for s in ["train", "val", "test"]}}
+    log.info("Scenario %s:\n%s", name, pd.DataFrame(rows).T.to_string())
+    log.info("size max/min = %s | default rate range = %s",
+             report["size_max_min_ratio"], report["default_rate_range"])
+
 
 if __name__ == "__main__":
     main()

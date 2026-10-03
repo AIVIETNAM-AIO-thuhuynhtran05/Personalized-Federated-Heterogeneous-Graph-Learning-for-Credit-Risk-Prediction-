@@ -1,109 +1,104 @@
-# Điều phối cả FedAvg và đối chứng local-only; gộp trọng số theo số Customer train, không theo số node lịch sử.
-"""All-client FedAvg versus equally initialized independent local GNNs."""
+"""Vòng lặp federated dùng chung cho FedAvg, FedProx, FedPer và Ditto.
+
+Mỗi round: server phát mô hình global -> từng client train cục bộ -> server gộp trọng số (FedAvg).
+  fedavg  : client train bản sao của global.
+  fedprox : như fedavg + số hạng phạt mu/2 ||w - w_global||^2 (Li et al., 2020).
+  fedper  : các tham số có tiền tố trong `personal_prefixes` (head phân loại) ở lại client;
+            mô hình của client = phần chung từ global + head riêng (Arivazhagan et al., 2019).
+  ditto   : ngoài bản global, mỗi client giữ mô hình riêng v, train với phạt
+            lam/2 ||v - w_global||^2 (Li et al., 2021).
+Checkpoint chọn theo AUC Val trung bình có trọng số (theo số mẫu Val) của mô hình mà mỗi client
+thực sự dùng để dự đoán; client chỉ gửi con số AUC này về server.
+"""
 import copy
-import csv
-import json
-from pathlib import Path
+import logging
+import time
+
 import numpy as np
-import torch
-from src.graph.graph_dataset import load_graph
-from src.models.hetero_gnn import HeteroGNN
-from src.federated.client import train_local, predict_test
-from src.evaluation.metrics import auc_metrics
+
+from src.federated.aggregation import fedavg
+from src.federated.client import proximal_term
+
+log = logging.getLogger(__name__)
 
 
-def run_experiment(graph_dir: Path, output_dir: Path, rounds=20, local_epochs=1,
-                   batch_size=256, learning_rate=1e-3, hidden=32, layers=2, seed=42, device="cpu"):
-    if min(rounds, local_epochs, batch_size, hidden, layers) < 1 or learning_rate <= 0:
-        raise ValueError("Training parameters must be positive")
-    manifest = json.loads((graph_dir / "manifest.json").read_text())
-    clients = manifest["clients"]
-    if not clients:
-        raise ValueError("No clients")
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    first = load_graph(graph_dir / f"{clients[0]}.npz")
-    dimensions = {key[3:]: value.shape[1] for key, value in first.items() if key.startswith("x__")}
-    relations = sorted(key[6:] for key in first if key.startswith("edge__"))
-    graph_schema_version = first["metadata"].get("graph_schema_version", "legacy")
-    if manifest.get("graph_schema_version", graph_schema_version) != graph_schema_version:
-        raise ValueError("Graph schema differs from manifest; rebuild all client graphs")
-    del first
-    config = {"dimensions": dimensions, "relations": relations, "hidden": hidden, "layers": layers}
-    model = HeteroGNN(**config).to(device)
-    # Giữ bản trọng số khởi tạo chung để các mô hình local-only bắt đầu giống mô hình global.
-    initial = copy.deepcopy(model.cpu().state_dict())
-    model.to(device)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    local_dir = output_dir / "local_models"
-    local_dir.mkdir(exist_ok=True)
-    metadata = {"model": config, "rounds": rounds, "local_epochs": local_epochs,
-                "graph_schema_version": graph_schema_version,
-                "batch_size": batch_size, "learning_rate": learning_rate, "seed": seed,
-                "device": device, "graph_dir": str(graph_dir.resolve()), "manifest": manifest,
-                "aggregation": "FedAvg weighted by train customer count",
-                "comparison": "same initial weights and same local epochs per round; fixed final round"}
-    (output_dir / "run_config.json").write_text(json.dumps(metadata, indent=2))
-    rows = []
-    for round_id in range(1, rounds + 1):
-        # Chụp trạng thái đầu round; tất cả client FedAvg đều xuất phát từ cùng trạng thái này.
-        global_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
-        accumulator = {k: torch.zeros_like(v) for k, v in global_state.items()}
-        total = 0
-        for i, client in enumerate(clients):
-            graph = load_graph(graph_dir / f"{client}.npz")
-            if graph["metadata"]["encoder_fingerprint"] != manifest["encoder_fingerprint"]:
-                raise ValueError("Graphs use different encoders")
-            if graph["metadata"].get("graph_schema_version", "legacy") != graph_schema_version:
-                raise ValueError("Mixed graph schemas; rebuild all client graphs")
-            # Trọng số gộp là số Customer train; lịch sử nhiều node không làm tăng trọng số client.
-            count = int(graph["train_mask"].sum())
-            local = HeteroGNN(**config).to(device)
-            local.load_state_dict(global_state)
-            # Không truyền optimizer nên Adam của FedAvg được reset mỗi round/client.
-            train_local(local, graph, local_epochs, batch_size, learning_rate,
-                        seed + round_id * len(clients) + i, device)
-            for key, value in local.state_dict().items():
-                accumulator[key] += value.detach().cpu() * count
-            total += count
-            path = local_dir / f"{client}.pt"
-            standalone = HeteroGNN(**config).to(device)
-            optimizer = torch.optim.Adam(standalone.parameters(), lr=learning_rate)
-            if round_id == 1:
-                standalone.load_state_dict(initial)
-            else:
-                saved = torch.load(path, map_location=device, weights_only=True)
-                standalone.load_state_dict(saved["model"])
-                # Local-only giữ cả moment của Adam qua round, khác cơ chế reset của FedAvg ở trên.
-                optimizer.load_state_dict(saved["optimizer"])
-            train_local(standalone, graph, local_epochs, batch_size, learning_rate,
-                        seed + round_id * len(clients) + i, device, optimizer)
-            torch.save({"model": standalone.state_dict(), "optimizer": optimizer.state_dict()}, path)
-            del graph, local, standalone, optimizer
-        if total == 0:
-            raise ValueError("No train customers")
-        # Chia tổng có trọng số cho tổng Customer train để nhận trọng số global round mới.
-        model.load_state_dict({k: v / total for k, v in accumulator.items()})
-        pooled = {method: ([], []) for method in ("federated", "local_only")}
-        for client in clients:
-            graph = load_graph(graph_dir / f"{client}.npz")
-            standalone = HeteroGNN(**config).to(device)
-            standalone.load_state_dict(torch.load(local_dir / f"{client}.pt", map_location=device,
-                                                   weights_only=True)["model"])
-            for method, current in (("federated", model), ("local_only", standalone)):
-                y, scores = predict_test(current, graph, batch_size, device)
-                rows.append({"round": round_id, "client": client, "method": method, **auc_metrics(y, scores)})
-                pooled[method][0].extend(y.tolist())
-                pooled[method][1].extend(scores.tolist())
-            del graph, standalone
-        # Pooled AUC tính từ dự đoán ghép lại, không phải trung bình AUC các client.
-        for method, (y, scores) in pooled.items():
-            rows.append({"round": round_id, "client": "pooled", "method": method, **auc_metrics(y, scores)})
-        with (output_dir / "metrics.csv").open("w", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
-            writer.writeheader()
-            writer.writerows(rows)
-        # Ghi checkpoint round hiện tại; không dùng test để chọn checkpoint tốt nhất.
-        torch.save({"model": model.state_dict(), "config": config, "round": round_id}, output_dir / "federated.pt")
-        print(f"Round {round_id}/{rounds}: pooled FL ROC-AUC={rows[-2]['roc_auc']}, PR-AUC={rows[-2]['pr_auc']}; local-only ROC-AUC={rows[-1]['roc_auc']}, PR-AUC={rows[-1]['pr_auc']}", flush=True)
-    return rows
+def _is_personal(key: str, prefixes) -> bool:
+    return any(key.startswith(p) for p in prefixes)
+
+
+def _client_model(global_model, personal_state, algo, prefixes):
+    """Mô hình client dùng để dự đoán ở thời điểm hiện tại."""
+    if algo in ("fedavg", "fedprox") or personal_state is None:
+        return global_model
+    m = copy.deepcopy(global_model)
+    if algo == "fedper":
+        state = m.state_dict()
+        state.update(personal_state)
+        m.load_state_dict(state)
+    else:  # ditto
+        m.load_state_dict(personal_state)
+    return m
+
+
+def run_federated(clients, model_fn, mcfg: dict, acfg: dict, algo: str = "fedavg"):
+    lr, wd = mcfg["lr"], mcfg["weight_decay"]
+    prefixes = acfg.get("personal_prefixes", ["head."])
+    global_model = model_fn()
+    personal = {c.cid: None for c in clients}
+    best = {"auc": -1.0, "round": 0, "global": None, "personal": None}
+    bad, history = 0, []
+    t0 = time.time()
+
+    for rnd in range(1, acfg["rounds"] + 1):
+        states, weights, losses = [], [], []
+        for c in clients:
+            local = copy.deepcopy(global_model)
+            if algo == "fedper" and personal[c.cid] is not None:
+                state = local.state_dict()
+                state.update(personal[c.cid])
+                local.load_state_dict(state)
+            reg = proximal_term(global_model, acfg["mu"]) if algo == "fedprox" else None
+            losses.append(c.fit(local, acfg["local_epochs"], lr, wd, reg_fn=reg))
+            states.append(local.state_dict())
+            weights.append(c.n("train"))
+
+            if algo == "fedper":
+                personal[c.cid] = {k: v.clone() for k, v in local.state_dict().items()
+                                   if _is_personal(k, prefixes)}
+            elif algo == "ditto":
+                # Mô hình riêng v được kéo về global của round hiện tại (trước khi gộp)
+                v = copy.deepcopy(global_model)
+                if personal[c.cid] is not None:
+                    v.load_state_dict(personal[c.cid])
+                c.fit(v, acfg["local_epochs"], lr, wd, reg_fn=proximal_term(global_model, acfg["lam"]))
+                personal[c.cid] = copy.deepcopy(v.state_dict())
+
+        global_model.load_state_dict(fedavg(states, weights))
+
+        aucs = [c.auc(_client_model(global_model, personal[c.cid], algo, prefixes), "val") for c in clients]
+        val_auc = float(np.average(aucs, weights=[c.n("val") for c in clients]))
+        history.append({"round": rnd, "client_train_loss": losses, "client_val_auc": aucs,
+                        "weighted_val_auc": val_auc})
+        log.info("%s round %2d | weighted val AUC %.5f | per-client %s | %.0fs", algo, rnd, val_auc,
+                 np.round(aucs, 4).tolist(), time.time() - t0)
+
+        if val_auc > best["auc"]:
+            best = {"auc": val_auc, "round": rnd, "global": copy.deepcopy(global_model.state_dict()),
+                    "personal": copy.deepcopy(personal)}
+            bad = 0
+        else:
+            bad += 1
+            if bad >= acfg["patience"]:
+                log.info("%s early stopping (best round %d)", algo, best["round"])
+                break
+
+    global_model.load_state_dict(best["global"])
+    models = {c.cid: _client_model(global_model, best["personal"][c.cid], algo, prefixes) for c in clients}
+    info = {"algo": algo, "best_round": best["round"], "best_weighted_val_auc": best["auc"],
+            "history": history, "train_time_sec": round(time.time() - t0, 1)}
+    return global_model, models, info
+
+
+def run_fedavg(clients, model_fn, mcfg: dict, fcfg: dict, seed: int = 0):
+    global_model, _, info = run_federated(clients, model_fn, mcfg, fcfg, "fedavg")
+    return global_model, info

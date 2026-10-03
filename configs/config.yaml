@@ -1,13 +1,22 @@
 seed: 42
+
 paths:
-  raw_application: data/raw/application_train.csv
-  prepared_tables: data/interim/tables
-  engineered_application: data/interim/application_features.csv
-  client_dir: data/processed/clients
-  graph_dir: data/processed/graphs
-  shared_encoder: data/processed/shared_encoder.json
-preprocessing:
-  missing_threshold: 0.80
-  protected_columns: [SK_ID_CURR, SK_ID_BUREAU, SK_ID_PREV, TARGET, REGION_RATING_CLIENT_W_CITY, OCCUPATION_TYPE]
-  missing_scope: global_before_partition
-  encoder_fit_scope: pooled_local_train_only
+  raw_dir: data/raw/home-credit-default-risk
+  processed_dir: data/processed
+  results_dir: results
+
+# Chỉ application_train có TARGET -> mọi tập có nhãn đều tách từ đây.
+# Split được tạo MỘT LẦN và dùng chung cho cả nhánh Centralized lẫn Federated
+# (bước partition client phải giữ nguyên cột `split`).
+split:
+  val_size: 0.15
+  test_size: 0.15
+  stratify: TARGET
+
+files:
+  features: application_features.parquet
+  splits: splits.parquet
+
+threshold:
+  # Tiêu chí chọn threshold trên Validation: f1 | youden
+  criterion: f1

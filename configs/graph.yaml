@@ -1,0 +1,15 @@
+files:
+  centralized_graph: graph/centralized_graph.pt
+  orphan_report: metrics/graph_orphan_report.json
+
+orphan_policy:
+  # Event (installment/POS/CC) có SK_ID_PREV không tồn tại trong previous_application
+  # nhưng SK_ID_CURR hợp lệ:
+  #   placeholder -> tạo node prev "giữ chỗ" (IS_PLACEHOLDER=1, đặc trưng thiếu) làm cha
+  #   drop        -> bỏ các event này
+  missing_previous: placeholder
+
+# Encoder của từng node type fit trên tối đa ngần này dòng (lấy mẫu từ node thuộc khách hàng Train)
+encoder_fit_max_rows: 1000000
+clip_quantiles: [0.01, 0.99]
+onehot_min_frequency: 0.005

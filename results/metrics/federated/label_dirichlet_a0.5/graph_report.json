@@ -1,0 +1,752 @@
+{
+  "bureau_balance_global": {
+    "bureau_balance_rows_without_bureau": 3120184,
+    "bureau_balance_ids_without_bureau": 43041,
+    "bureau_without_bureau_balance": 941810
+  },
+  "clients": {
+    "0": {
+      "missing_previous": {
+        "installment": {
+          "rows": 581455,
+          "rows_missing_prev": 48070,
+          "share_missing_prev": 0.08267191786122743,
+          "distinct_missing_prev": 1649,
+          "customers_affected": 1480,
+          "rows_curr_mismatch": 0
+        },
+        "pos": {
+          "rows": 436021,
+          "rows_missing_prev": 15967,
+          "share_missing_prev": 0.03661979583552168,
+          "distinct_missing_prev": 1555,
+          "customers_affected": 1399,
+          "rows_curr_mismatch": 0
+        },
+        "cc": {
+          "rows": 159691,
+          "rows_missing_prev": 42242,
+          "share_missing_prev": 0.26452336074043,
+          "distinct_missing_prev": 443,
+          "customers_affected": 443,
+          "rows_curr_mismatch": 0
+        },
+        "placeholder_prev_created": 1998
+      },
+      "childless": {
+        "prev_without_any_payment_record": 28327,
+        "prev_payment_coverage_by_status": {
+          "Approved": {
+            "n": 44982,
+            "share_with_payment_record": 0.9575
+          },
+          "Canceled": {
+            "n": 13116,
+            "share_with_payment_record": 0.0
+          },
+          "Refused": {
+            "n": 12143,
+            "share_with_payment_record": 0.0
+          },
+          "Unused offer": {
+            "n": 1155,
+            "share_with_payment_record": 0.0
+          }
+        },
+        "approved_prev_without_payment_record": 1913,
+        "customers_without_bureau": 2156,
+        "customers_without_prev": 743,
+        "customers_without_any_history": 105
+      },
+      "validation": {
+        "customer->bureau": {
+          "edges": 74737,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "customer->prev": {
+          "edges": 73394,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->installment": {
+          "edges": 581455,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->pos": {
+          "edges": 436021,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->cc": {
+          "edges": 159691,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "edge_types": [
+          [
+            "customer",
+            "has_bureau",
+            "bureau"
+          ],
+          [
+            "bureau",
+            "rev_has_bureau",
+            "customer"
+          ],
+          [
+            "customer",
+            "has_prev",
+            "prev"
+          ],
+          [
+            "prev",
+            "rev_has_prev",
+            "customer"
+          ],
+          [
+            "prev",
+            "has_installment",
+            "installment"
+          ],
+          [
+            "installment",
+            "rev_has_installment",
+            "prev"
+          ],
+          [
+            "prev",
+            "has_pos",
+            "pos"
+          ],
+          [
+            "pos",
+            "rev_has_pos",
+            "prev"
+          ],
+          [
+            "prev",
+            "has_cc",
+            "cc"
+          ],
+          [
+            "cc",
+            "rev_has_cc",
+            "prev"
+          ]
+        ],
+        "customer_customer_edges": 0
+      },
+      "nodes": {
+        "customer": 15514,
+        "bureau": 74737,
+        "prev": 73394,
+        "installment": 581455,
+        "pos": 436021,
+        "cc": 159691
+      }
+    },
+    "1": {
+      "missing_previous": {
+        "installment": {
+          "rows": 9052905,
+          "rows_missing_prev": 812742,
+          "share_missing_prev": 0.08977692795848405,
+          "distinct_missing_prev": 25894,
+          "customers_affected": 23592,
+          "rows_curr_mismatch": 0
+        },
+        "pos": {
+          "rows": 6671633,
+          "rows_missing_prev": 228560,
+          "share_missing_prev": 0.03425847914596022,
+          "distinct_missing_prev": 24281,
+          "customers_affected": 21989,
+          "rows_curr_mismatch": 0
+        },
+        "cc": {
+          "rows": 2532439,
+          "rows_missing_prev": 693191,
+          "share_missing_prev": 0.27372465832345816,
+          "distinct_missing_prev": 7280,
+          "customers_affected": 7276,
+          "rows_curr_mismatch": 0
+        },
+        "placeholder_prev_created": 31565
+      },
+      "childless": {
+        "prev_without_any_payment_record": 433323,
+        "prev_payment_coverage_by_status": {
+          "Approved": {
+            "n": 691332,
+            "share_with_payment_record": 0.9573
+          },
+          "Canceled": {
+            "n": 200348,
+            "share_with_payment_record": 0.0
+          },
+          "Refused": {
+            "n": 185776,
+            "share_with_payment_record": 0.0
+          },
+          "Unused offer": {
+            "n": 17685,
+            "share_with_payment_record": 0.0
+          }
+        },
+        "approved_prev_without_payment_record": 29514,
+        "customers_without_bureau": 33872,
+        "customers_without_prev": 11655,
+        "customers_without_any_history": 1719
+      },
+      "validation": {
+        "customer->bureau": {
+          "edges": 1142270,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "customer->prev": {
+          "edges": 1126706,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->installment": {
+          "edges": 9052905,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->pos": {
+          "edges": 6671633,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->cc": {
+          "edges": 2532439,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "edge_types": [
+          [
+            "customer",
+            "has_bureau",
+            "bureau"
+          ],
+          [
+            "bureau",
+            "rev_has_bureau",
+            "customer"
+          ],
+          [
+            "customer",
+            "has_prev",
+            "prev"
+          ],
+          [
+            "prev",
+            "rev_has_prev",
+            "customer"
+          ],
+          [
+            "prev",
+            "has_installment",
+            "installment"
+          ],
+          [
+            "installment",
+            "rev_has_installment",
+            "prev"
+          ],
+          [
+            "prev",
+            "has_pos",
+            "pos"
+          ],
+          [
+            "pos",
+            "rev_has_pos",
+            "prev"
+          ],
+          [
+            "prev",
+            "has_cc",
+            "cc"
+          ],
+          [
+            "cc",
+            "rev_has_cc",
+            "prev"
+          ]
+        ],
+        "customer_customer_edges": 0
+      },
+      "nodes": {
+        "customer": 239550,
+        "bureau": 1142270,
+        "prev": 1126706,
+        "installment": 9052905,
+        "pos": 6671633,
+        "cc": 2532439
+      }
+    },
+    "2": {
+      "missing_previous": {
+        "installment": {
+          "rows": 757836,
+          "rows_missing_prev": 54635,
+          "share_missing_prev": 0.07209343446339314,
+          "distinct_missing_prev": 1794,
+          "customers_affected": 1618,
+          "rows_curr_mismatch": 0
+        },
+        "pos": {
+          "rows": 547585,
+          "rows_missing_prev": 17807,
+          "share_missing_prev": 0.03251915227772857,
+          "distinct_missing_prev": 1742,
+          "customers_affected": 1528,
+          "rows_curr_mismatch": 0
+        },
+        "cc": {
+          "rows": 203789,
+          "rows_missing_prev": 47267,
+          "share_missing_prev": 0.23194088002787197,
+          "distinct_missing_prev": 496,
+          "customers_affected": 496,
+          "rows_curr_mismatch": 0
+        },
+        "placeholder_prev_created": 2238
+      },
+      "childless": {
+        "prev_without_any_payment_record": 45588,
+        "prev_payment_coverage_by_status": {
+          "Approved": {
+            "n": 58051,
+            "share_with_payment_record": 0.9552
+          },
+          "Canceled": {
+            "n": 19319,
+            "share_with_payment_record": 0.0
+          },
+          "Refused": {
+            "n": 22091,
+            "share_with_payment_record": 0.0
+          },
+          "Unused offer": {
+            "n": 1580,
+            "share_with_payment_record": 0.0
+          }
+        },
+        "approved_prev_without_payment_record": 2598,
+        "customers_without_bureau": 3548,
+        "customers_without_prev": 807,
+        "customers_without_any_history": 142
+      },
+      "validation": {
+        "customer->bureau": {
+          "edges": 98047,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "customer->prev": {
+          "edges": 103279,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->installment": {
+          "edges": 757836,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->pos": {
+          "edges": 547585,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->cc": {
+          "edges": 203789,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "edge_types": [
+          [
+            "customer",
+            "has_bureau",
+            "bureau"
+          ],
+          [
+            "bureau",
+            "rev_has_bureau",
+            "customer"
+          ],
+          [
+            "customer",
+            "has_prev",
+            "prev"
+          ],
+          [
+            "prev",
+            "rev_has_prev",
+            "customer"
+          ],
+          [
+            "prev",
+            "has_installment",
+            "installment"
+          ],
+          [
+            "installment",
+            "rev_has_installment",
+            "prev"
+          ],
+          [
+            "prev",
+            "has_pos",
+            "pos"
+          ],
+          [
+            "pos",
+            "rev_has_pos",
+            "prev"
+          ],
+          [
+            "prev",
+            "has_cc",
+            "cc"
+          ],
+          [
+            "cc",
+            "rev_has_cc",
+            "prev"
+          ]
+        ],
+        "customer_customer_edges": 0
+      },
+      "nodes": {
+        "customer": 21033,
+        "bureau": 98047,
+        "prev": 103279,
+        "installment": 757836,
+        "pos": 547585,
+        "cc": 203789
+      }
+    },
+    "3": {
+      "missing_previous": {
+        "installment": {
+          "rows": 286024,
+          "rows_missing_prev": 24641,
+          "share_missing_prev": 0.08615011327720751,
+          "distinct_missing_prev": 811,
+          "customers_affected": 721,
+          "rows_curr_mismatch": 0
+        },
+        "pos": {
+          "rows": 213945,
+          "rows_missing_prev": 6985,
+          "share_missing_prev": 0.03264857790553647,
+          "distinct_missing_prev": 746,
+          "customers_affected": 670,
+          "rows_curr_mismatch": 0
+        },
+        "cc": {
+          "rows": 76578,
+          "rows_missing_prev": 21744,
+          "share_missing_prev": 0.2839457807725456,
+          "distinct_missing_prev": 229,
+          "customers_affected": 229,
+          "rows_curr_mismatch": 0
+        },
+        "placeholder_prev_created": 975
+      },
+      "childless": {
+        "prev_without_any_payment_record": 14484,
+        "prev_payment_coverage_by_status": {
+          "Approved": {
+            "n": 22066,
+            "share_with_payment_record": 0.9561
+          },
+          "Canceled": {
+            "n": 6525,
+            "share_with_payment_record": 0.0
+          },
+          "Refused": {
+            "n": 6433,
+            "share_with_payment_record": 0.0
+          },
+          "Unused offer": {
+            "n": 558,
+            "share_with_payment_record": 0.0
+          }
+        },
+        "approved_prev_without_payment_record": 968,
+        "customers_without_bureau": 1074,
+        "customers_without_prev": 386,
+        "customers_without_any_history": 61
+      },
+      "validation": {
+        "customer->bureau": {
+          "edges": 36598,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "customer->prev": {
+          "edges": 36557,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->installment": {
+          "edges": 286024,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->pos": {
+          "edges": 213945,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->cc": {
+          "edges": 76578,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "edge_types": [
+          [
+            "customer",
+            "has_bureau",
+            "bureau"
+          ],
+          [
+            "bureau",
+            "rev_has_bureau",
+            "customer"
+          ],
+          [
+            "customer",
+            "has_prev",
+            "prev"
+          ],
+          [
+            "prev",
+            "rev_has_prev",
+            "customer"
+          ],
+          [
+            "prev",
+            "has_installment",
+            "installment"
+          ],
+          [
+            "installment",
+            "rev_has_installment",
+            "prev"
+          ],
+          [
+            "prev",
+            "has_pos",
+            "pos"
+          ],
+          [
+            "pos",
+            "rev_has_pos",
+            "prev"
+          ],
+          [
+            "prev",
+            "has_cc",
+            "cc"
+          ],
+          [
+            "cc",
+            "rev_has_cc",
+            "prev"
+          ]
+        ],
+        "customer_customer_edges": 0
+      },
+      "nodes": {
+        "customer": 7626,
+        "bureau": 36598,
+        "prev": 36557,
+        "installment": 286024,
+        "pos": 213945,
+        "cc": 76578
+      }
+    },
+    "4": {
+      "missing_previous": {
+        "installment": {
+          "rows": 913372,
+          "rows_missing_prev": 79283,
+          "share_missing_prev": 0.086802529527947,
+          "distinct_missing_prev": 2551,
+          "customers_affected": 2337,
+          "rows_curr_mismatch": 0
+        },
+        "pos": {
+          "rows": 674191,
+          "rows_missing_prev": 22302,
+          "share_missing_prev": 0.03307964656899899,
+          "distinct_missing_prev": 2399,
+          "customers_affected": 2198,
+          "rows_curr_mismatch": 0
+        },
+        "cc": {
+          "rows": 255468,
+          "rows_missing_prev": 68528,
+          "share_missing_prev": 0.26824494652950664,
+          "distinct_missing_prev": 719,
+          "customers_affected": 719,
+          "rows_curr_mismatch": 0
+        },
+        "placeholder_prev_created": 3118
+      },
+      "childless": {
+        "prev_without_any_payment_record": 43806,
+        "prev_payment_coverage_by_status": {
+          "Approved": {
+            "n": 69668,
+            "share_with_payment_record": 0.9579
+          },
+          "Canceled": {
+            "n": 20133,
+            "share_with_payment_record": 0.0
+          },
+          "Refused": {
+            "n": 18947,
+            "share_with_payment_record": 0.0
+          },
+          "Unused offer": {
+            "n": 1793,
+            "share_with_payment_record": 0.0
+          }
+        },
+        "approved_prev_without_payment_record": 2933,
+        "customers_without_bureau": 3370,
+        "customers_without_prev": 1106,
+        "customers_without_any_history": 173
+      },
+      "validation": {
+        "customer->bureau": {
+          "edges": 113673,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "customer->prev": {
+          "edges": 113659,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->installment": {
+          "edges": 913372,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->pos": {
+          "edges": 674191,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "prev->cc": {
+          "edges": 255468,
+          "index_in_range": true,
+          "every_child_has_one_parent": true,
+          "reverse_matches": true
+        },
+        "edge_types": [
+          [
+            "customer",
+            "has_bureau",
+            "bureau"
+          ],
+          [
+            "bureau",
+            "rev_has_bureau",
+            "customer"
+          ],
+          [
+            "customer",
+            "has_prev",
+            "prev"
+          ],
+          [
+            "prev",
+            "rev_has_prev",
+            "customer"
+          ],
+          [
+            "prev",
+            "has_installment",
+            "installment"
+          ],
+          [
+            "installment",
+            "rev_has_installment",
+            "prev"
+          ],
+          [
+            "prev",
+            "has_pos",
+            "pos"
+          ],
+          [
+            "pos",
+            "rev_has_pos",
+            "prev"
+          ],
+          [
+            "prev",
+            "has_cc",
+            "cc"
+          ],
+          [
+            "cc",
+            "rev_has_cc",
+            "prev"
+          ]
+        ],
+        "customer_customer_edges": 0
+      },
+      "nodes": {
+        "customer": 23788,
+        "bureau": 113673,
+        "prev": 113659,
+        "installment": 913372,
+        "pos": 674191,
+        "cc": 255468
+      }
+    }
+  },
+  "feature_dims": {
+    "customer": 313,
+    "bureau": 64,
+    "prev": 173,
+    "installment": 17,
+    "pos": 12,
+    "cc": 37
+  }
+}

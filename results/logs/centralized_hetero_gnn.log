@@ -1,0 +1,21 @@
+C:\Users\huynh\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch\cuda\__init__.py:56: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+C:\Users\huynh\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch_geometric\nn\conv\hetero_conv.py:76: UserWarning: There exist node types ({'prev', 'bureau'}) whose representations do not get updated during message passing as they do not occur as destination type in any edge type. This may lead to unexpected behavior.
+  warnings.warn(
+18:38:46 Params: 143297 | train/val/test customers: {'train': 215257, 'val': 46127, 'test': 46127}
+18:39:10 epoch  1 | loss 0.2606 | val AUC 0.76833 | 24s
+18:39:35 epoch  2 | loss 0.2462 | val AUC 0.77542 | 49s
+18:40:00 epoch  3 | loss 0.2420 | val AUC 0.77902 | 74s
+18:40:26 epoch  4 | loss 0.2400 | val AUC 0.78030 | 100s
+18:40:57 epoch  5 | loss 0.2375 | val AUC 0.78283 | 131s
+18:41:32 epoch  6 | loss 0.2364 | val AUC 0.78343 | 165s
+18:42:21 epoch  7 | loss 0.2347 | val AUC 0.78189 | 215s
+18:42:55 epoch  8 | loss 0.2333 | val AUC 0.78260 | 249s
+18:43:28 epoch  9 | loss 0.2317 | val AUC 0.78336 | 281s
+18:44:02 epoch 10 | loss 0.2299 | val AUC 0.78338 | 316s
+18:44:02 Early stopping (best epoch 6)
+18:44:08 TEST results (threshold ch\u1ecdn trên Validation):
+                     roc_auc  pr_auc      ks      f1  precision  recall  threshold
+logistic_regression   0.7832  0.2775  0.4317  0.3376     0.2724  0.4436     0.1624
+lightgbm              0.7931  0.2951  0.4448  0.3495     0.2965  0.4256     0.1734
+hetero_gnn            0.7858  0.2819  0.4365  0.3370     0.2742  0.4372     0.1766

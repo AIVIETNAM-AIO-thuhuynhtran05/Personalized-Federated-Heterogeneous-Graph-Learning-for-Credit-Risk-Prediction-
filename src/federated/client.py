@@ -1,47 +1,83 @@
-# Các hàm train và dự đoán dùng chung; chỉ train trên thành phần khách hàng trong train_mask.
-"""Local optimization uses only complete train-customer components."""
+"""Một client federated: giữ local heterogeneous graph + split Train/Val/Test riêng,
+chỉ trao đổi trọng số mô hình (không gửi dữ liệu hay dự đoán thô) với server."""
 import numpy as np
+import pandas as pd
 import torch
-from src.graph.graph_dataset import component_batch
+from sklearn.metrics import roc_auc_score
+
+from src.graph.graph_split import CustomerSubgraphLoader
+from src.graph.schema import CUSTOMER
 
 
-def train_local(model, graph, epochs=1, batch_size=256, learning_rate=1e-3, seed=42,
-                device="cpu", optimizer=None, stats=None):
-    # Caller truyền optimizer để giữ Adam state; không truyền thì khởi tạo lại cho lần gọi này.
-    optimizer = optimizer or torch.optim.Adam(model.parameters(), lr=learning_rate)
-    rng = np.random.default_rng(seed)
-    # Không lấy Customer test vào batch train; node lịch sử cũng được lọc theo ownership.
-    customers = np.flatnonzero(graph["train_mask"])
+def train_epoch(model, loader, opt, loss_fn, reg_fn=None) -> float:
+    """Một epoch. `reg_fn(model)` là số hạng phạt cộng thêm vào loss (FedProx, Ditto).
+    Giá trị trả về là BCE trung bình (không gồm số hạng phạt)."""
     model.train()
-    loss_sum, examples, steps = 0.0, 0, 0
-    for _ in range(epochs):
-        rng.shuffle(customers)
-        for start in range(0, len(customers), batch_size):
-            x, edges, labels, _ = component_batch(graph, customers[start:start + batch_size], device)
-            optimizer.zero_grad()
-            # Loss trung bình trên Customer trong batch, không trọng số và không tính nhãn node lịch sử.
-            loss = torch.nn.functional.binary_cross_entropy_with_logits(model(x, edges), labels)
-            if not torch.isfinite(loss):
-                raise ValueError("Non-finite training loss")
-            loss.backward()
-            optimizer.step()
-            loss_sum += float(loss.detach().cpu()) * len(labels)
-            examples += len(labels)
-            steps += 1
-    if stats is not None:
-        stats.update(train_loss=loss_sum / examples if examples else None,
-                     examples=examples, optimizer_steps=steps)
-    return optimizer
+    total, n = 0.0, 0
+    for batch in loader:
+        opt.zero_grad()
+        logits = model(batch.x_dict, batch.edge_index_dict)
+        bce = loss_fn(logits, batch[CUSTOMER].y)
+        loss = bce if reg_fn is None else bce + reg_fn(model)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        opt.step()
+        total += bce.item() * len(logits)
+        n += len(logits)
+    return total / max(n, 1)
 
 
-def predict_test(model, graph, batch_size=256, device="cpu"):
+def proximal_term(reference: torch.nn.Module, coef: float):
+    """coef/2 * ||w - w_ref||^2 với w_ref cố định (bản sao tại thời điểm gọi)."""
+    ref = [p.detach().clone() for p in reference.parameters()]
+
+    def reg(model):
+        return (coef / 2) * sum(((p - r) ** 2).sum() for p, r in zip(model.parameters(), ref))
+    return reg
+
+
+@torch.no_grad()
+def predict(model, loader) -> tuple[np.ndarray, np.ndarray]:
     model.eval()
-    customers = np.flatnonzero(graph["test_mask"])
-    labels, scores = [], []
-    # Dự đoán không dựng đồ thị gradient; model.eval() không tự thay thế no_grad().
-    with torch.no_grad():
-        for start in range(0, len(customers), batch_size):
-            x, edges, y, _ = component_batch(graph, customers[start:start + batch_size], device)
-            labels.extend(y.cpu().numpy().tolist())
-            scores.extend(torch.sigmoid(model(x, edges)).cpu().numpy().tolist())
-    return np.asarray(labels), np.asarray(scores)
+    ids, probs = [], []
+    for batch in loader:
+        probs.append(torch.sigmoid(model(batch.x_dict, batch.edge_index_dict)))
+        ids.append(batch[CUSTOMER].n_id)
+    return torch.cat(ids).numpy(), torch.cat(probs).numpy()
+
+
+class FLClient:
+    def __init__(self, cid: int, data, assign: pd.DataFrame, batch_size: int, seed: int):
+        self.cid = cid
+        self.data = data
+        self.sk = data[CUSTOMER].sk_id_curr.numpy()
+        self.y = data[CUSTOMER].y.numpy()
+        pos = pd.Series(np.arange(len(self.sk)), index=self.sk)
+        self.idx = {s: pos.loc[assign.loc[assign["split"] == s, "SK_ID_CURR"]].values
+                    for s in ["train", "val", "test"]}
+        self.train_loader = CustomerSubgraphLoader(data, self.idx["train"], batch_size, shuffle=True,
+                                                   seed=seed + cid)
+        self.eval_loaders = {s: CustomerSubgraphLoader(data, self.idx[s], batch_size * 4)
+                             for s in ["val", "test"]}
+
+    def n(self, split: str) -> int:
+        return len(self.idx[split])
+
+    def fit(self, model, epochs: int, lr: float, weight_decay: float, reg_fn=None, opt=None) -> float:
+        """Train cục bộ. Truyền `opt` để giữ trạng thái optimizer giữa các lần gọi (Local-only,
+        fine-tune); mặc định tạo optimizer mới như một client FL không lưu trạng thái giữa các round."""
+        opt = opt or torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+        loss_fn = torch.nn.BCEWithLogitsLoss()
+        loss = 0.0
+        for _ in range(epochs):
+            loss = train_epoch(model, self.train_loader, opt, loss_fn, reg_fn)
+        return loss
+
+    def predict(self, model, split: str) -> pd.DataFrame:
+        ids, p = predict(model, self.eval_loaders[split])
+        return pd.DataFrame({"SK_ID_CURR": self.sk[ids], "TARGET": self.y[ids].astype(int),
+                             "prob": p, "split": split, "client": self.cid})
+
+    def auc(self, model, split: str = "val") -> float:
+        df = self.predict(model, split)
+        return float(roc_auc_score(df["TARGET"], df["prob"]))
