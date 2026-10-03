@@ -1,0 +1,23 @@
+C:\Users\huynh\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch\cuda\__init__.py:56: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+18:36:52 prev: 1413701 nodes
+18:37:01 installment: 11591592 nodes
+18:37:06 pos: 8543375 nodes
+18:37:12 cc: 3227965 nodes
+18:37:12 customer: 307511 nodes | bureau: 1465325 nodes
+18:37:13 Created 39894 placeholder prev nodes
+18:37:38 encoded customer       307511 nodes x 300 features
+18:37:47 encoded bureau        1465325 nodes x  61 features
+18:38:11 encoded prev          1453595 nodes x 168 features
+18:38:17 encoded installment  11591592 nodes x  17 features
+18:38:21 encoded pos           8543375 nodes x  11 features
+18:38:28 encoded cc            3227965 nodes x  36 features
+18:38:36 Graph saved -> data\processed\graph\centralized_graph.pt
+18:38:36 Nodes: {'customer': 307511, 'bureau': 1465325, 'prev': 1453595, 'installment': 11591592, 'pos': 8543375, 'cc': 3227965}
+18:38:36 Feature dims: {'customer': 300, 'bureau': 61, 'prev': 168, 'installment': 17, 'pos': 11, 'cc': 36}
+18:38:36 missing_previous[installment]: {'rows': 11591592, 'rows_missing_prev': 1019371, 'share_missing_prev': 0.08794055208292355, 'distinct_missing_prev': 32699, 'customers_affected': 29748, 'rows_curr_mismatch': 0}
+18:38:36 missing_previous[pos]: {'rows': 8543375, 'rows_missing_prev': 291621, 'share_missing_prev': 0.03413416828829356, 'distinct_missing_prev': 30723, 'customers_affected': 27784, 'rows_curr_mismatch': 0}
+18:38:36 missing_previous[cc]: {'rows': 3227965, 'rows_missing_prev': 872972, 'share_missing_prev': 0.2704403548365611, 'distinct_missing_prev': 9167, 'customers_affected': 9163, 'rows_curr_mismatch': 0}
+18:38:36 missing_previous[placeholder_prev_created]: 39894
+18:38:36 childless: {'prev_without_any_payment_record': 565528, 'approved_prev_without_payment_record': 37926, 'customers_without_bureau': 44020, 'customers_without_prev': 14697, 'customers_without_any_history': 2200}
+18:38:36 bureau_balance: {'bureau_balance_rows_without_bureau': 3120184, 'bureau_balance_ids_without_bureau': 43041, 'bureau_without_bureau_balance': 941810}

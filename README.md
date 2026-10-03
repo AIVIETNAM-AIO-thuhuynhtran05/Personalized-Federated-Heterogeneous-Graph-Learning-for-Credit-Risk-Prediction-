@@ -1,228 +1,240 @@
-# Personalized Federated Heterogeneous Graph Learning for Credit Risk
+# Personalized Federated Heterogeneous Graph Learning for Credit Risk Prediction
 
-## Tài liệu theo thư mục
+Khóa luận tốt nghiệp: dự đoán khả năng vỡ nợ của khách hàng vay tiêu dùng trên bộ dữ liệu
+[Home Credit Default Risk](https://www.kaggle.com/competitions/home-credit-default-risk).
 
-Các README tiếng Việt mô tả vai trò, cách sử dụng và trạng thái triển khai:
+Dự án trả lời ba câu hỏi:
 
-- [Scripts và thứ tự chạy pipeline](scripts/README.md)
-- [Mã nguồn và các module](src/README.md)
-- [Cấu hình](configs/README.md)
-- [Dữ liệu và vòng đời các đầu ra](data/README.md)
-- [Notebook phân tích](notebooks/README.md)
-- [Kết quả thí nghiệm](results/README.md)
-- [Kiểm thử](tests/README.md)
+1. Biểu diễn dữ liệu tín dụng dạng **heterogeneous graph** (khách hàng, hồ sơ vay trước, lịch sử
+   tín dụng, từng kỳ trả góp...) có giúp dự đoán tốt không, so với mô hình bảng truyền thống?
+2. Khi dữ liệu nằm ở **nhiều tổ chức tín dụng** không được chia sẻ dữ liệu khách hàng cho nhau,
+   **Federated Learning** (chỉ trao đổi trọng số mô hình) có tốt hơn việc mỗi tổ chức tự train không,
+   và kém bao nhiêu so với gom dữ liệu về một chỗ?
+3. **Personalized FL** (mỗi tổ chức có mô hình được cá nhân hóa) có tốt hơn FedAvg không?
 
-## Experiment protocol
+## Kết quả chính
 
-1. Aggregate bureau_balance into bureau, then drop columns with >80% missing
-   globally. This existing preparation step is unchanged. Keep relation keys.
-2. Allocate customers to N clients using label-based Dirichlet sampling.
-3. Split each client locally by TARGET into train/test (default 80/20).
-4. Fit ONE shared encoder/scaler on the union of local-train rows only, including
-   history rows owned by those train customers. Never fit on local-test rows.
-5. Transform all clients with that fitted encoder. Save one heterogeneous graph
-   file per client, with Customer train_mask/test_mask.
-6. Train FedAvg and independent local-only GNNs using train customers only.
-7. Log each client's local-test AUC and pooled test AUC for both methods per round.
-8. Sweep N=10,20,30,40,50; fit a fresh shared transformer for each N/seed split.
+Mọi mô hình được đánh giá trên **cùng một tập Test** gồm 46,127 khách hàng (tỷ lệ vỡ nợ 8.07%).
+Nhánh Federated mô phỏng 5 tổ chức tín dụng, mỗi tổ chức phụ trách một nhóm vùng địa lý.
 
-This is a centralized simulation of FL with shared train-only preprocessing.
-It does not implement a privacy-preserving distributed encoder fit. Global
-missing selection is kept as requested; a strict held-out protocol would also
-learn that selection mask using training data only.
+| Vai trò | Mô hình | ROC-AUC trên toàn bộ Test | AUC trung bình theo tổ chức | AUC của tổ chức kém nhất |
+|---|---|---|---|---|
+| Gom dữ liệu (cận trên) | Logistic Regression | 0.7832 | 0.7823 | 0.7719 |
+| Gom dữ liệu (cận trên) | LightGBM | **0.7931** | **0.7900** | **0.7834** |
+| Gom dữ liệu (cận trên) | HeteroGNN | 0.7858 | 0.7839 | 0.7752 |
+| Mỗi tổ chức tự train (cận dưới) | Local-only HeteroGNN | 0.7673 | 0.7621 | 0.7463 |
+| Federated Learning | FedAvg HeteroGNN | 0.7836 | 0.7803 | 0.7731 |
+| Personalized FL | FedAvg + Fine-tune | 0.7826 | 0.7798 | 0.7731 |
+| Personalized FL | FedProx | 0.7794 | 0.7775 | 0.7671 |
+| Personalized FL | FedPer | 0.7814 | 0.7804 | 0.7732 |
+| Personalized FL | Ditto | 0.7817 | 0.7818 | 0.7747 |
 
-## Setup and commands
+"AUC trung bình theo tổ chức" coi 5 tổ chức quan trọng như nhau. Các mô hình "gom dữ liệu" được train
+một lần trên toàn bộ dữ liệu; cột theo tổ chức chỉ là AUC của cùng mô hình đó tính trên khách hàng của
+từng tổ chức.
 
-Use the project virtual environment (PyTorch, pandas, NumPy, scikit-learn):
+Tóm tắt:
 
-```powershell
-.\.venv\Scripts\Activate.ps1
+- **Hợp tác có lợi:** FedAvg tốt hơn Local-only ở 4/5 tổ chức, có ý nghĩa thống kê (khoảng tin cậy 95%
+  bằng paired bootstrap). Lợi ích lớn nhất ở các tổ chức nhỏ.
+- **Bảo mật gần như không tốn chi phí:** FedAvg không khác biệt có ý nghĩa so với HeteroGNN train trên
+  dữ liệu gom chung, ở cả 5 tổ chức.
+- **Cá nhân hóa chưa tạo khác biệt rõ:** không phương pháp Personalized FL nào tốt hơn FedAvg có ý nghĩa
+  thống kê. Ditto cải thiện 3 tổ chức nhỏ nhất và có AUC tổ chức kém nhất cao nhất nhóm Federated, nhưng
+  giảm nhẹ ở tổ chức lớn nhất. Trong kịch bản này FedAvg đã gần chạm cận trên nên còn ít chỗ để cải thiện.
+- Kết quả hiện mới chạy với **1 seed**.
+
+Chi tiết đầy đủ (bảng theo từng tổ chức, khoảng tin cậy, thảo luận) nằm trong
+[báo cáo tiến độ](docs/Bao_cao_tien_do_KLTN.pdf).
+
+## Pipeline
+
+![Pipeline](docs/pipeline.png)
+
+Hai nhánh dùng **chung một cách chia** Train / Validation / Test = 70 / 15 / 15 lấy từ
+`application_train.csv`. File `application_test.csv` của Kaggle không có nhãn nên không được dùng để đánh giá.
+
+- **Nhánh Centralized** dùng toàn bộ dữ liệu, không chia tổ chức. Đây là mức tốt nhất có thể khi bỏ qua
+  ràng buộc bảo mật.
+- **Nhánh Federated** chia khách hàng cho 5 tổ chức. Mỗi tổ chức giữ phần Train / Validation / Test của mình,
+  nên hợp Test của 5 tổ chức đúng bằng Test chung.
+
+## Các thiết kế chính
+
+### Heterogeneous graph
+
+Graph được dựng trực tiếp từ các bảng quan hệ theo khóa ngoại, kèm cạnh ngược để thông tin đi hai chiều.
+
+| Node | Định danh | Ý nghĩa | Số node |
+|---|---|---|---|
+| customer | `SK_ID_CURR` | Hồ sơ vay hiện tại | 307,511 |
+| bureau | `SK_ID_BUREAU` | Khoản tín dụng ở tổ chức khác (đã gộp `bureau_balance`) | 1,465,325 |
+| prev | `SK_ID_PREV` | Hồ sơ vay trước đây tại Home Credit | 1,453,595 |
+| installment | theo sự kiện | Một kỳ trả góp | 11,591,592 |
+| pos | theo tháng | Bản ghi POS / tiền mặt | 8,543,375 |
+| cc | theo tháng | Bản ghi thẻ tín dụng | 3,227,965 |
+
+Cạnh: `customer → bureau`, `customer → prev`, `prev → installment / pos / cc`, và 5 cạnh ngược tương ứng.
+
+Mỗi bản ghi lịch sử chỉ thuộc một khách hàng, nên graph gồm nhiều cây tách rời: mỗi khách hàng là gốc của
+một cây. Hệ quả là không có thông tin đi từ khách hàng Test sang khách hàng Train qua graph, và chia graph
+theo tổ chức không làm mất cạnh nào.
+
+### Dữ liệu "mồ côi" (orphan records)
+
+| Trường hợp | Mức độ | Cách xử lý |
+|---|---|---|
+| Kỳ trả góp / thẻ / POS trỏ tới hồ sơ vay trước không tồn tại | 27% dòng thẻ tín dụng, 8.8% kỳ trả góp, 3.4% POS | Tạo node hồ sơ vay "giữ chỗ" (`IS_PLACEHOLDER = 1`) làm node cha |
+| Hồ sơ vay trước không có lịch sử trả | 565,528 hồ sơ, chủ yếu bị từ chối hoặc hủy | Không phải lỗi; giữ node, thêm đặc trưng số node con và cờ `HAS_*` |
+| Khách hàng không có lịch sử nào | 2,200 khách hàng | Giữ node; mô hình dùng đặc trưng của chính khách hàng |
+| `bureau_balance` không trỏ tới `bureau` nào | 3.1 triệu dòng | Bỏ, vì không nối được về khách hàng |
+
+### Chia dữ liệu cho các tổ chức
+
+Kịch bản chính `region_territory_a0.5` mô phỏng 5 tổ chức tín dụng hoạt động theo địa bàn:
+
+1. **Vùng sinh sống quyết định khách hàng thuộc tổ chức nào.** Cột `REGION_POPULATION_RELATIVE` có 81 giá trị,
+   mỗi giá trị ứng với đúng một `REGION_RATING_CLIENT`, nên được dùng làm mã vùng. Mỗi vùng do đúng một tổ
+   chức phụ trách.
+2. **Dirichlet(α = 0.5) quyết định quy mô mỗi tổ chức** (quantity skew). Tổ chức nhỏ nhất có 3.2% khách
+   hàng, lớn nhất 47.4%.
+3. Toàn bộ lịch sử của khách hàng đi theo tổ chức sở hữu khách hàng đó.
+
+Khác biệt giữa các tổ chức về đặc trưng (thu nhập, điểm tín dụng `EXT_SOURCE`...) xuất hiện tự nhiên từ các
+vùng mà tổ chức phụ trách. Tỷ lệ vỡ nợ chỉ chênh nhẹ (7.6% – 9.3%), sát với thực tế.
+
+Kịch bản phụ `label_dirichlet_a0.5` chia theo nhãn (Dirichlet trên `TARGET`), cho ra một tổ chức có 72% khách
+hàng vỡ nợ. Kịch bản này phi thực tế và chỉ được giữ làm stress test.
+
+### Federated Learning
+
+- **Encoder thống nhất:** mỗi tổ chức chỉ gửi thống kê tổng hợp (quantile, median, danh mục, tổng và tổng
+  bình phương), không gửi dữ liệu. Nhờ đó mọi tổ chức có cùng không gian đặc trưng.
+- **Baseline:** Local-only (mỗi tổ chức tự train, không trao đổi) và FedAvg.
+- **Personalized FL:**
+
+| Phương pháp | Phần được cá nhân hóa |
+|---|---|
+| FedAvg + Fine-tune | Toàn bộ mô hình, train thêm tại tổ chức sau khi FedAvg hội tụ |
+| FedProx | Không cá nhân hóa; thêm số hạng phạt để ổn định khi dữ liệu khác nhau |
+| FedPer | Head phân loại riêng ở từng tổ chức, phần còn lại dùng chung |
+| Ditto | Mỗi tổ chức có mô hình riêng, được kéo về gần mô hình chung |
+
+- Checkpoint và threshold chọn trên Validation của từng tổ chức; Test chỉ dùng để đánh giá một lần.
+
+## Cài đặt
+
+Yêu cầu: Python 3.12, khoảng **16 GB RAM**, khoảng 10 GB ổ đĩa trống. Toàn bộ thí nghiệm chạy được trên CPU.
+
+```bash
 python -m pip install -r requirements.txt
 ```
 
-Preparation was already performed in data/interim/tables/. To regenerate it:
+Tải dữ liệu từ [Kaggle](https://www.kaggle.com/competitions/home-credit-default-risk/data) và giải nén toàn bộ
+file CSV vào:
 
-```powershell
-python scripts/01_prepare_tables.py
+```
+data/raw/home-credit-default-risk/
+├── application_train.csv
+├── application_test.csv
+├── bureau.csv
+├── bureau_balance.csv
+├── previous_application.csv
+├── installments_payments.csv
+├── POS_CASH_balance.csv
+└── credit_card_balance.csv
 ```
 
-Run one experiment:
+## Cách chạy
 
-```powershell
-python scripts/02_partition_clients.py --num-clients 10 --alpha 0.5 --seed 42
-python scripts/02b_fit_encoder.py
-python scripts/03_build_graphs.py
-python scripts/04_train_federated.py --rounds 20 --local-epochs 1 --batch-size 256
-python scripts/05_evaluate.py
+Chạy theo thứ tự. Thời gian đo trên CPU 16 luồng.
+
+| Bước | Lệnh | Làm gì | Thời gian |
+|---|---|---|---|
+| 1 | `python scripts/01_preprocess.py` | Làm sạch, tạo 601 đặc trưng bảng, tạo split chung 70/15/15 | ~3 phút |
+| 2 | `python scripts/04a_train_centralized.py` | Train Logistic Regression và LightGBM | ~12 phút |
+| 3 | `python scripts/03a_build_centralized_graph.py` | Dựng graph toàn cục, kiểm tra orphan records | ~3 phút |
+| 4 | `python scripts/04b_train_centralized_gnn.py` | Train HeteroGNN trên graph toàn cục | ~5 phút |
+| 5 | `python scripts/02_partition_clients.py` | Chia khách hàng cho 5 tổ chức | vài giây |
+| 6 | `python scripts/03_build_graphs.py` | Dựng graph cục bộ cho từng tổ chức, encoder thống nhất | ~4 phút |
+| 7 | `python scripts/04_train_federated.py` | Train Local-only, FedAvg và 4 phương pháp Personalized FL | ~3 giờ |
+| 8 | `python scripts/05_evaluate.py` | So sánh mọi mô hình trên Test của từng tổ chức, kèm khoảng tin cậy | ~12 phút |
+
+Một số tùy chọn:
+
+```bash
+# Chỉ train một vài phương pháp (fedavg_ft cần FedAvg chạy trước hoặc đã có checkpoint)
+python scripts/04_train_federated.py --methods fedavg ditto
+
+# Chạy cho kịch bản chia khác (bước 5 đến 8)
+python scripts/02_partition_clients.py --scenario label_dirichlet_a0.5
+python scripts/03_build_graphs.py      --scenario label_dirichlet_a0.5
+python scripts/04_train_federated.py   --scenario label_dirichlet_a0.5 --methods local fedavg
+python scripts/05_evaluate.py          --scenario label_dirichlet_a0.5
 ```
 
-### Train independent GNNs per client
+Siêu tham số nằm trong `configs/`:
 
-After partitioning, fitting the shared encoder, and building the v2 encoded
-graphs, run the dedicated local-only trainer:
+| File | Nội dung |
+|---|---|
+| `config.yaml` | Đường dẫn, seed, tỷ lệ split, tiêu chí chọn threshold |
+| `model.yaml` | Logistic Regression, LightGBM, HeteroGNN |
+| `graph.yaml` | Cách xử lý orphan records, encoder theo node type |
+| `partition.yaml` | Các kịch bản chia tổ chức |
+| `federated.yaml` | Local-only, FedAvg, Fine-tune, FedProx, FedPer, Ditto, bootstrap |
 
-```powershell
-python scripts/04_train_local_gnn.py --epochs 20 --batch-size 128
-python scripts/04_train_local_gnn.py --clients client_000 client_001 --epochs 20 --device cpu
+## Cấu trúc thư mục
+
+```
+configs/            Siêu tham số và kịch bản thí nghiệm
+data/raw/           Dữ liệu Kaggle (không đưa lên git)
+data/processed/     Đặc trưng, split, graph đã dựng (tạo bởi script, không đưa lên git)
+docs/               Báo cáo tiến độ và sơ đồ pipeline
+results/metrics/    Kết quả dạng JSON / CSV
+results/logs/       Log của các lần chạy
+scripts/            Các bước của pipeline, chạy theo số thứ tự
+src/
+  preprocessing/    Làm sạch, aggregate bảng phụ, encoder (fit chỉ trên Train)
+  graph/            Schema, dựng node/cạnh, xử lý orphan, mini-batch theo khách hàng
+  models/           Logistic Regression, LightGBM, HeteroGNN
+  partition/        Chia tổ chức theo vùng / theo nhãn, đo mức non-IID
+  federated/        Encoder thống nhất, client, server (FedAvg, FedProx, FedPer, Ditto), fine-tune
+  evaluation/       Metric, chọn threshold, đánh giá theo tổ chức
 ```
 
-It uses the existing relation-specific mean GNN (2 layers, hidden size 32), one
-independent model/Adam optimizer per client, and the common feature encoder.
-Customer binary classification uses unweighted BCEWithLogitsLoss on train_mask
-only. Complete customer components form batches, preserving normal and orphan
-relations. The final epoch is saved; test metrics never select checkpoints.
-No validation split or early stopping is introduced. Average precision is
-reported alongside ROC AUC; either is blank for a single-class/empty test set.
-Clients without train customers are marked skipped instead of evaluating an
-untrained model. Device auto-selects CUDA if available, otherwise CPU.
+## Kết quả đã lưu
 
-Outputs in results/local_gnn/:
-- run_config.json and summary.csv across the selected clients
-- client_XXX/model.pt (weights, architecture, encoder/schema identity)
-- client_XXX/history.csv (epoch, train loss, optimizer steps, local test metrics)
-- client_XXX/test_predictions.csv (SK_ID_CURR, TARGET, probability_default)
+| File | Nội dung |
+|---|---|
+| `results/metrics/centralized_baselines.json` | Metric của các mô hình Centralized trên Validation và Test |
+| `results/metrics/graph_orphan_report.json` | Thống kê orphan records của graph toàn cục |
+| `results/metrics/federated/<kịch bản>/partition_report.json` | Quy mô, tỷ lệ vỡ nợ, mức lệch phân phối của từng tổ chức |
+| `results/metrics/federated/<kịch bản>/federated_results.json` | Metric và lịch sử train của các phương pháp Federated |
+| `results/metrics/federated/<kịch bản>/comparison.json` | So sánh mọi mô hình theo từng tổ chức, kèm khoảng tin cậy 95% |
 
-Only one client graph is loaded at a time, but its encoded arrays must fit RAM.
-The batch-size option limits customer components used for each forward/backward
-pass; it does not cap neighbors per customer or reduce graph-loading memory.
-The supplied RelBench examples use their own task/database wrappers; this entry
-point consumes this project's six-type .npz graphs and TARGET labels directly.
-Model code: src/models/hetero_gnn.py. Training: src/models/local_training.py.
+Checkpoint mô hình, graph đã dựng và file dự đoán không được đưa lên git; chạy lại các script để tạo lại.
 
-Run the requested sweep directly from prepared tables (steps 2-7 are automatic):
+## Hạn chế và hướng tiếp theo
 
-```powershell
-python scripts/06_sweep_clients.py --client-counts 10 20 30 40 50 --alpha 0.5 --seeds 42 --rounds 20
-```
+- Mới chạy 1 seed; cần lặp lại nhiều seed để kiểm tra độ ổn định.
+- Chạy Personalized FL trên kịch bản khác biệt mạnh hơn giữa các tổ chức, và quét α ∈ {0.1, 1, 5}.
+- Tune λ của Ditto và μ của FedProx trên Validation.
+- HeteroGNN chưa được tune (attention khi gộp sự kiện, mã hóa thời gian).
+- Việc chia tổ chức là mô phỏng: Home Credit là một tổ chức duy nhất, việc dùng
+  `REGION_POPULATION_RELATIVE` làm mã vùng là suy luận từ dữ liệu đã ẩn danh.
 
-Optional multiple seeds: `--seeds 42 43 44`. Use `--device cuda` only with a CUDA
-PyTorch installation. The default is CPU. The scripts use CLI defaults; YAML
-files document defaults and are not automatically loaded. The old
-01_preprocess.py is an application-only utility outside this experiment flow.
+## Phiên bản trước
 
-## Partition details
+Pipeline trước đây trên `main` (strict centralized, chia client Dirichlet theo nhãn với 10–50 client, bộ test
+tự động) vẫn được giữ nguyên ở nhánh
+[`backup/main-before-pfl`](../../tree/backup/main-before-pfl).
 
-For each TARGET class, reserve min_per_class samples for every client, then
-allocate the remaining class samples using a Dirichlet(alpha) vector and a
-multinomial draw. The default minimum is 2: this is a CONSTRAINED Dirichlet
-partition that supports both classes in local train/test. It is not an
-unconditioned Dirichlet sample. Set --min-per-class 0 for unconditioned allocation;
-clients can then be empty or single-class and AUC can be undefined. Invalid
-requests with too few class samples fail explicitly. The previous semantic
-region/occupation partition remains available via --strategy semantic.
+## Tài liệu tham khảo
 
-The local stratified split rounds test counts separately for each class and
-keeps at least one train and one test sample when a class has at least 2 samples.
-Singletons remain train. Thus small clients can deviate from exactly 80/20.
-No oversampling, undersampling, or class weighting is applied. Counts by class
-and split are recorded in partition_report.json. Customer IDs are disjoint
-between clients; related rows follow SK_ID_CURR. Rows outside application_train
-remain in the prepared sources and are reported as unassigned.
-
-## Shared features and graphs
-
-Shared encoder statistics and vocabularies are accumulated across all clients'
-train-owned rows. Numeric values use pooled train mean imputation and standard
-deviation scaling. All-missing train numeric columns remain present (zero).
-Categorical values use a shared one-hot vocabulary with explicit missing and
-unknown slots. IDs and TARGET are excluded from features. The fitted JSON stores
-feature order, dimensions, fit row counts, split hashes and a fingerprint.
-Encoder fitting is independent of client/test values; no columns are dropped
-again. Both comparison methods use this same preprocessing protocol.
-
-Each client .npz graph contains x__<node>, owner__<node>, mapping__<node>__<key>,
-edge__<relation>, y, customer_ids, train_mask, test_mask, and JSON metadata.
-Six node types: customer, bureau, previous_application, installment, pos_cash,
-credit_card. Schema `orphan_fallback_v2` keeps eight relation types plus reverses,
-including empty edge arrays so every client has the same relation schema:
-
-```text
-customer --has--> bureau / previous_application
-previous_application --has--> installment / pos_cash / credit_card (parent exists)
-customer --has_orphan--> installment / pos_cash / credit_card (parent absent only)
-```
-
-A transaction has exactly one forward parent edge. There is no direct Customer
-shortcut for transactions with a valid Previous parent. `is_orphan_prev` is
-appended as the LAST unscaled binary feature of all three transaction types,
-including clients without orphans, and is also saved as a separate graph array.
-The shared encoder stays unchanged; this structural flag is computed at graph
-build time without labels. Extra feature metadata and a graph schema version
-are saved to prevent mixing old/new graphs.
-
-Transactions whose SK_ID_CURR is null/absent from this client, or whose existing
-Previous belongs to another Customer, are excluded from graph nodes and saved
-to graphs/quarantine/client_XXX/<table>.csv with source_row_id and a reason.
-Quarantine counts/reasons are in graph metadata (or graph_report.json in topology
-mode). Source tables are never modified. Node IDs are rebuilt contiguously;
-source_row_id preserves the original zero-based input row position after filtering.
-Invalid Customer/Bureau/Previous entity keys still raise errors.
-Bureau monthly history is aggregated, not a seventh node type.
-
-Rebuild ALL client graphs after this schema change, using 03_build_graphs.py
-after partition and encoder fitting are complete. Retrain models; old checkpoint
-input dimensions and relation parameters are not compatible. No need to refit
-an existing encoder solely for the added structural flag if splits are unchanged.
-
-Customer components have no cross-customer edges. Training batches contain only
-train-customer components, including all of their history nodes. Test components
-are used only for prediction. The GNN has no batch normalization or operation
-that mixes disconnected customers' statistics. Keeping both masks in one file
-does not make test labels or test features participate in training.
-
-## Models, metrics and outputs
-
-The implemented baseline is a relation-specific mean-message-passing GNN,
-2 layers and hidden size 32 by default, followed by a Customer binary head.
-All-client FedAvg weights client updates by the number of train customers.
-Local-only models use the same architecture, initial weights, shared encoder,
-local splits and total local epochs. Local-only Adam state persists; FedAvg
-local Adam is reset each round. This is a FedAvg baseline, not an implementation
-of a specialized personalization algorithm or an exact reproduction of a paper.
-
-Binary cross-entropy is unweighted and uses only train customers. Evaluation is
-reported at every round with a fixed final-round checkpoint; no test-based best
-checkpoint selection or hyperparameter search is performed. Undefined AUC is
-blank in CSV/null in JSON. Pooled AUC is calculated on concatenated predictions,
-NOT the mean of local AUCs. Pooled local-only scores come from different models
-and may have different calibration. The pooled readout is not an independently
-held-out external test set. Across N, local splits change; use multiple seeds
-for research conclusions rather than assuming the pooled test IDs are fixed.
-
-Single run outputs:
-- data/processed/clients/client_XXX/: six CSVs + customer_split.csv
-- data/processed/clients/partition_report.json and assignments.csv
-- data/processed/shared_encoder.json
-- data/processed/graphs/client_XXX.npz + manifest.json
-- results/default/metrics.csv (round, client, method, auc, test counts)
-- results/default/federated.pt, local_models/*.pt and run_config.json
-- results/default/final_evaluation.csv from the evaluation command
-
-Sweep outputs are isolated in results/sweep/n_NN_seed_SEED/. Combined
-results/sweep/sweep_metrics.csv adds num_clients, alpha and seed to every local
-and pooled metric row. Full sweeps retain prepared client tables, graphs and
-checkpoints for each run and require substantial disk space and compute.
-
-## Validation
-
-```powershell
-python -m unittest discover -s tests -p test_prepare_tables.py -v
-python -m unittest discover -s tests -p test_federated_pipeline.py -v
-python -m unittest discover -s tests -p test_dirichlet_training.py -v
-```
-
-Tests include train/test isolation for encoder fitting and gradient updates,
-Dirichlet repeatability, ownership, reverse edges, checkpoint evaluation, and a
-small end-to-end sweep. Small synthetic AUCs are software checks, not research
-results on Home Credit.
-
-
-### ROC-AUC and PR-AUC
-
-All evaluation entry points log `roc_auc` and `pr_auc` on Customer test masks.
-PR-AUC is trapezoidal area under the precision-recall curve, with TARGET=1
-as the positive class. `average_precision` remains a separate metric and
-`auc` remains a compatibility alias for ROC-AUC. Empty or single-class test
-sets have null metrics (blank CSV cells). Pooled metrics are computed from
-concatenated test predictions, not averaged client metrics. Existing CSVs
-are not automatically updated; subsequent runs produce the new columns.
+- McMahan et al. (2017). Communication-Efficient Learning of Deep Networks from Decentralized Data. *AISTATS*. (FedAvg)
+- Li et al. (2020). Federated Optimization in Heterogeneous Networks. *MLSys*. (FedProx)
+- Arivazhagan et al. (2019). Federated Learning with Personalization Layers. *arXiv:1912.00818*. (FedPer)
+- Li et al. (2021). Ditto: Fair and Robust Federated Learning Through Personalization. *ICML*.
+- Hsu et al. (2019). Measuring the Effects of Non-Identical Data Distribution for Federated Visual Classification. *arXiv:1909.06335*.
+- Li et al. (2022). Federated Learning on Non-IID Data Silos: An Experimental Study. *ICDE*.
+- Kairouz et al. (2021). Advances and Open Problems in Federated Learning. *Foundations and Trends in Machine Learning*.

@@ -1,41 +1,40 @@
-# GNN mean theo từng loại quan hệ: chiếu đặc trưng về hidden chung, truyền tin, dự đoán logit cho Customer.
-"""Relation-specific mean message passing with a customer classification head."""
+"""HeteroGNN cho bài toán phân loại node customer.
+
+Mỗi node type có encoder riêng -> L tầng HeteroConv(SAGEConv theo từng edge type, có residual)
+-> MLP trên embedding customer. Với L=2: tầng 1 đưa thông tin event -> prev và prev/bureau -> customer,
+tầng 2 đưa prev (đã chứa thông tin event) -> customer. Tầng cuối chỉ tính các cạnh đi vào customer.
+"""
 import torch
 from torch import nn
+from torch_geometric.nn import HeteroConv, SAGEConv
+
+from src.graph.schema import CUSTOMER
 
 
 class HeteroGNN(nn.Module):
-    def __init__(self, dimensions, relations, hidden=32, layers=2):
+    def __init__(self, in_dims: dict[str, int], edge_types: list[tuple], hidden: int = 64,
+                 num_layers: int = 2, dropout: float = 0.2):
         super().__init__()
-        self.relations = tuple(relations)
-        # Mỗi loại node có số chiều đầu vào khác nhau nhưng đều được chiếu về hidden chung.
-        self.input = nn.ModuleDict({node: nn.Linear(dim, hidden) for node, dim in dimensions.items()})
-        self.self_layers = nn.ModuleList([
-            nn.ModuleDict({node: nn.Linear(hidden, hidden) for node in dimensions}) for _ in range(layers)])
-        # Mỗi lớp và mỗi chiều quan hệ có Linear riêng; has và rev_has không chia sẻ trọng số.
-        self.messages = nn.ModuleList([
-            nn.ModuleDict({relation: nn.Linear(hidden, hidden, bias=False) for relation in self.relations})
-            for _ in range(layers)])
-        self.head = nn.Linear(hidden, 1)
+        self.dropout = dropout
+        self.encoders = nn.ModuleDict({
+            t: nn.Sequential(nn.Linear(d, hidden), nn.LayerNorm(hidden), nn.ReLU())
+            for t, d in in_dims.items()})
+        self.convs = nn.ModuleList()
+        self.norms = nn.ModuleList()
+        for layer in range(num_layers):
+            last = layer == num_layers - 1
+            ets = [et for et in edge_types if not last or et[2] == CUSTOMER]
+            self.convs.append(HeteroConv(
+                {et: SAGEConv((hidden, hidden), hidden, aggr="mean") for et in ets}, aggr="sum"))
+            self.norms.append(nn.ModuleDict({t: nn.LayerNorm(hidden) for t in {et[2] for et in ets}}))
+        self.head = nn.Sequential(nn.Linear(hidden, hidden), nn.ReLU(), nn.Dropout(dropout),
+                                  nn.Linear(hidden, 1))
 
-    def forward(self, features, edges):
-        hidden = {node: torch.relu(self.input[node](value)) for node, value in features.items()}
-        for self_layer, messages in zip(self.self_layers, self.messages):
-            # Nhánh self giữ thông tin node; không cần thêm cạnh self-loop vào dữ liệu graph.
-            updated = {node: self_layer[node](value) for node, value in hidden.items()}
-            for relation in self.relations:
-                source, _, target = relation.split("__")
-                edge = edges[relation]
-                if edge.shape[1] == 0:
-                    continue
-                # Lấy biểu diễn nguồn của từng cạnh: [E, hidden].
-                message = messages[relation](hidden[source][edge[0]])
-                # Cộng message vào node đích bằng index_add_; nhiều cạnh cùng đích được cộng dồn.
-                aggregate = torch.zeros_like(updated[target]).index_add_(0, edge[1], message)
-                # Chia theo bậc đích trong riêng quan hệ này; clamp tránh chia cho 0 ở node không có cạnh.
-                degree = torch.bincount(edge[1], minlength=len(aggregate)).clamp_min(1).unsqueeze(1)
-                updated[target] = updated[target] + aggregate / degree
-            # Chỉ cập nhật hidden sau khi xử lý mọi quan hệ: một vòng tương ứng một hop đồng bộ.
-            hidden = {node: torch.relu(value) for node, value in updated.items()}
-        # Trả logit [số Customer]; loss dùng BCEWithLogitsLoss, sigmoid chỉ áp dụng khi dự đoán.
-        return self.head(hidden["customer"]).squeeze(1)
+    def forward(self, x_dict, edge_index_dict) -> torch.Tensor:
+        h = {t: self.encoders[t](x) for t, x in x_dict.items()}
+        for conv, norms in zip(self.convs, self.norms):
+            out = conv(h, edge_index_dict)
+            h = {**h, **{t: h[t] + nn.functional.dropout(torch.relu(norms[t](o)), self.dropout,
+                                                         self.training)
+                         for t, o in out.items()}}
+        return self.head(h[CUSTOMER]).squeeze(-1)

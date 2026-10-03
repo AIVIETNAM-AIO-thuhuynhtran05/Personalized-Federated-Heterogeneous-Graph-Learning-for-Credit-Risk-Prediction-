@@ -1,84 +1,84 @@
-# Ghép node, cạnh và đặc trưng; encoder có mặt tạo NPZ huấn luyện, encoder=None chỉ xuất topology.
-"""Build client-local graphs using a previously fitted shared train-only encoder."""
-from pathlib import Path
-import json
-import hashlib
+"""Dựng HeteroData từ bảng quan hệ: node -> xử lý orphan -> cạnh -> encode đặc trưng -> kiểm tra."""
+import logging
+
 import numpy as np
 import pandas as pd
-from src.graph.schema import NODE_TABLES, TRANSACTION_TYPES, GRAPH_SCHEMA_VERSION
-from src.graph.orphan_handler import prepare_transaction_nodes
-from src.graph.node_builder import build_nodes
-from src.graph.edge_builder import build_edges
-from src.preprocessing.shared_encoder import transform_table
+import torch
+from torch_geometric.data import HeteroData
+
+from src.graph.edge_builder import add_structural_features, edge_index_dict, link_tables, root_customer
+from src.graph.node_builder import load_node_tables
+from src.graph.orphan_check import childless_report, resolve_missing_previous, validate_graph
+from src.graph.schema import CATEGORICAL, CUSTOMER, NODE_TYPES
+from src.preprocessing.feature_transformer import make_linear_preprocessor
+
+log = logging.getLogger(__name__)
+
+NON_FEATURE = {"SK_ID_CURR", "SK_ID_PREV", "SK_ID_BUREAU", "TARGET"}
 
 
-def build_client_graph(client_dir: Path, output_dir: Path, schema: dict, encoder=None):
-    tables = {}
-    for table, _ in NODE_TABLES.values():
-        dtypes = ({spec["column"]: "string" for spec in encoder["tables"][table]["columns"]}
-                  if encoder is not None else None)
-        frame = pd.read_csv(client_dir / f"{table}.csv", dtype=dtypes)
-        if frame.columns.tolist() != schema[table]:
-            raise ValueError(f"{client_dir.name}/{table}: inconsistent global schema")
-        tables[table] = frame
-    tables, quarantine = prepare_transaction_nodes(tables)
-    quarantine_dir = output_dir.parent / "quarantine" / client_dir.name
-    quarantine_dir.mkdir(parents=True, exist_ok=True)
-    quarantine_report = {}
-    for table, rows in quarantine.items():
-        rows.to_csv(quarantine_dir / f"{table}.csv", index=False)
-        quarantine_report[table] = {"rows": len(rows), "reasons": rows.quarantine_reason.value_counts().to_dict()}
-    nodes = build_nodes(tables)
-    edges, missing = build_edges(nodes)
-    if encoder is not None:
-        split_path = client_dir / "customer_split.csv"
-        # Không cho dùng encoder cũ khi nội dung split đã đổi.
-        if hashlib.sha256(split_path.read_bytes()).hexdigest() != encoder["split_hashes"][client_dir.name]:
-            raise ValueError("Split changed since encoder fit; refit on current local-train rows")
-        split = pd.read_csv(split_path).set_index("SK_ID_CURR")
-        customers = tables["application_train"]
-        # Căn thứ tự mask theo thứ tự Customer trong graph, không dựa thứ tự CSV split.
-        split = split.loc[customers.SK_ID_CURR]
-        train = split.train_mask.to_numpy(dtype=bool)
-        test = split.test_mask.to_numpy(dtype=bool)
-        if np.any(train & test) or not np.all(train | test):
-            raise ValueError("Train/test masks must be disjoint and exhaustive")
-        payload = {"y": customers.TARGET.to_numpy(dtype=np.float32),
-                   "train_mask": train, "test_mask": test,
-                   "customer_ids": customers.SK_ID_CURR.to_numpy(dtype=np.int64)}
-        owner = nodes["customer"].set_index("SK_ID_CURR").node_id
-        for node_type, (table, _) in NODE_TABLES.items():
-            payload[f"x__{node_type}"] = transform_table(tables[table], encoder["tables"][table])
-            if node_type in TRANSACTION_TYPES:
-                flag = tables[table].is_orphan_prev.to_numpy(dtype=np.float32)
-                # Thêm cờ cấu trúc ở chiều cuối, giữ nguyên 0/1 thay vì chuẩn hóa bằng encoder.
-                payload[f"x__{node_type}"] = np.column_stack((payload[f"x__{node_type}"], flag))
-                payload[f"is_orphan_prev__{node_type}"] = flag.astype(np.int8)
-            payload[f"owner__{node_type}"] = nodes[node_type].SK_ID_CURR.map(owner).to_numpy(dtype=np.int64)
-            for key in nodes[node_type].columns:
-                payload[f"mapping__{node_type}__{key}"] = pd.to_numeric(nodes[node_type][key]).to_numpy(dtype=np.float64)
-        # Lưu cả quan hệ thuận/ngược, kể cả mảng rỗng để schema đồng nhất giữa client.
-        payload.update({f"edge__{key}": value for key, value in edges.items()})
-        metadata = {"client": client_dir.name, "encoder_fingerprint": encoder["fingerprint"],
-                    "graph_schema_version": GRAPH_SCHEMA_VERSION,
-                    "extra_features": {node: ["is_orphan_prev"] for node in TRANSACTION_TYPES},
-                    "quarantine": quarantine_report, "quarantine_path": str(quarantine_dir.resolve()),
-                    "node_counts": {k: len(v) for k, v in nodes.items()},
-                    "missing_previous_links": missing, "artifact": "encoded_heterogeneous_graph"}
-        payload["metadata"] = np.array(json.dumps(metadata))
-        output_dir.parent.mkdir(parents=True, exist_ok=True)
-        np.savez_compressed(output_dir.with_suffix(".npz"), **payload)
-        return metadata
-    # Nhánh encoder=None chỉ xuất topology; entry point huấn luyện yêu cầu graph đã mã hóa.
-    output_dir.mkdir(parents=True, exist_ok=True)
-    for node_type, mapping in nodes.items():
-        mapping.to_csv(output_dir / f"{node_type}_nodes.csv", index=False)
-    np.savez_compressed(output_dir / "edges.npz", **edges)
-    report = {"client": client_dir.name, "node_counts": {k: len(v) for k, v in nodes.items()},
-              "graph_schema_version": GRAPH_SCHEMA_VERSION, "quarantine": quarantine_report,
-              "quarantine_path": str(quarantine_dir.resolve()),
-              "edge_counts": {k: v.shape[1] for k, v in edges.items()},
-              "missing_previous_links": missing, "schema": schema,
-              "artifact": "topology_only", "source_tables": str(client_dir.resolve())}
-    (output_dir / "graph_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
-    return report
+def node_columns(t: str, df: pd.DataFrame) -> tuple[list[str], list[str]]:
+    if t == CUSTOMER:
+        cat = [c for c in df.columns if df[c].dtype == object and c not in NON_FEATURE]
+    else:
+        cat = CATEGORICAL[t]
+    num = [c for c in df.columns if c not in NON_FEATURE and c not in cat]
+    return num, cat
+
+
+def prepare_tables(tables: dict[str, pd.DataFrame], gcfg: dict):
+    """Xử lý orphan, nối cạnh, thêm đặc trưng cấu trúc (sửa `tables` tại chỗ).
+    Chỉ dùng dữ liệu của chính các khách hàng trong `tables` -> chạy cục bộ được ở từng client."""
+    report = {"missing_previous": resolve_missing_previous(tables, gcfg["orphan_policy"]["missing_previous"])}
+    report["childless"] = childless_report(tables)
+    parents = link_tables(tables)
+    add_structural_features(tables, parents)
+    roots = root_customer(parents, len(tables[CUSTOMER]))
+    return parents, roots, report
+
+
+def assemble_graph(tables, parents, xs: dict[str, torch.Tensor]) -> HeteroData:
+    data = HeteroData()
+    for t in NODE_TYPES:
+        data[t].x = xs[t]
+        data[t].num_nodes = xs[t].size(0)
+    data[CUSTOMER].y = torch.from_numpy(tables[CUSTOMER]["TARGET"].values.astype(np.float32))
+    data[CUSTOMER].sk_id_curr = torch.from_numpy(tables[CUSTOMER]["SK_ID_CURR"].values.astype(np.int64))
+    for et, ei in edge_index_dict(parents).items():
+        data[et].edge_index = ei
+    return data
+
+
+def encode_nodes(tables, roots, train_customer_mask, gcfg, seed, chunk=1_000_000):
+    """Fit encoder của từng node type CHỈ trên node thuộc khách hàng Train, áp cho mọi node."""
+    rng = np.random.default_rng(seed)
+    xs, names, encoders = {}, {}, {}
+    for t in NODE_TYPES:
+        df = tables[t]
+        num, cat = node_columns(t, df)
+        enc = make_linear_preprocessor(num, cat, gcfg["clip_quantiles"], gcfg["onehot_min_frequency"])
+        fit_idx = np.flatnonzero(train_customer_mask[roots[t]])
+        if len(fit_idx) > gcfg["encoder_fit_max_rows"]:
+            fit_idx = rng.choice(fit_idx, gcfg["encoder_fit_max_rows"], replace=False)
+        enc.fit(df.iloc[np.sort(fit_idx)])
+        parts = [enc.transform(df.iloc[i:i + chunk]).astype(np.float32) for i in range(0, len(df), chunk)]
+        xs[t] = torch.from_numpy(np.concatenate(parts))
+        names[t] = list(enc.get_feature_names_out())
+        encoders[t] = enc
+        log.info("encoded %-11s %9d nodes x %3d features", t, *xs[t].shape)
+    return xs, names, encoders
+
+
+def build_hetero_graph(cfg, gcfg, customer_ids, train_customer_ids):
+    tables, bb_stats = load_node_tables(cfg, customer_ids)
+    parents, roots, report = prepare_tables(tables, gcfg)
+    report["bureau_balance"] = bb_stats
+    train_mask = tables[CUSTOMER]["SK_ID_CURR"].isin(set(train_customer_ids)).values
+
+    xs, names, encoders = encode_nodes(tables, roots, train_mask, gcfg, cfg["seed"])
+    data = assemble_graph(tables, parents, xs)
+
+    report["validation"] = validate_graph(data)
+    report["nodes"] = {t: int(data[t].num_nodes) for t in NODE_TYPES}
+    report["feature_dims"] = {t: len(names[t]) for t in NODE_TYPES}
+    return data, report, {"feature_names": names, "encoders": encoders}
