@@ -50,6 +50,11 @@ def load_scenario(name: str | None = None) -> tuple[str, dict, dict]:
     return name, scfg, paths
 
 
+def seed_dir(path: Path, seed: int, default_seed: int) -> Path:
+    """Seed mặc định giữ đường dẫn cũ; seed khác ghi vào <path>/seeds/seed_<n> để không ghi đè."""
+    return path if seed == default_seed else path / "seeds" / f"seed_{seed}"
+
+
 def save_json(obj, path: str | Path) -> None:
     path = resolve(path)
     path.parent.mkdir(parents=True, exist_ok=True)

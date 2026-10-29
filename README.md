@@ -10,7 +10,8 @@ Dự án trả lời ba câu hỏi:
 2. Khi dữ liệu nằm ở **nhiều tổ chức tín dụng** không được chia sẻ dữ liệu khách hàng cho nhau,
    **Federated Learning** (chỉ trao đổi trọng số mô hình) có tốt hơn việc mỗi tổ chức tự train không,
    và kém bao nhiêu so với gom dữ liệu về một chỗ?
-3. **Personalized FL** (mỗi tổ chức có mô hình được cá nhân hóa) có tốt hơn FedAvg không?
+3. Khi dữ liệu giữa các tổ chức khác nhau nhiều (non-IID), **Personalized FL** có lợi thế gì so với FedAvg
+   truyền thống? Và trong trường hợp nào FedAvg vẫn phù hợp hơn?
 
 ## Kết quả chính
 
@@ -42,10 +43,39 @@ Tóm tắt:
 - **Cá nhân hóa chưa tạo khác biệt rõ:** không phương pháp Personalized FL nào tốt hơn FedAvg có ý nghĩa
   thống kê. Ditto cải thiện 3 tổ chức nhỏ nhất và có AUC tổ chức kém nhất cao nhất nhóm Federated, nhưng
   giảm nhẹ ở tổ chức lớn nhất. Trong kịch bản này FedAvg đã gần chạm cận trên nên còn ít chỗ để cải thiện.
-- Kết quả hiện mới chạy với **1 seed**.
+- Bảng trên là seed 42. Kết luận giữ nguyên khi lặp lại với 3 seed (42, 1, 2), xem bảng dưới.
 
-Chi tiết đầy đủ (bảng theo từng tổ chức, khoảng tin cậy, thảo luận) nằm trong
-[báo cáo tiến độ](docs/Bao_cao_tien_do_KLTN.pdf).
+### Lặp lại 3 seed và Hybrid Personalized FL
+
+AUC trung bình theo tổ chức trên Test, mean ± std qua 3 seed. Centralized LightGBM chỉ có seed 42.
+
+| Mô hình | AUC trung bình theo tổ chức | AUC của tổ chức kém nhất |
+|---|---|---|
+| Centralized LightGBM (cận trên) | **0.7928** | **0.7834** |
+| Centralized HeteroGNN | 0.7847 ± 0.0016 | 0.7737 ± 0.0014 |
+| Local-only HeteroGNN | 0.7670 ± 0.0011 | 0.7422 ± 0.0036 |
+| FedAvg HeteroGNN | 0.7835 ± 0.0013 | 0.7731 ± 0.0023 |
+| Ditto | 0.7818 ± 0.0006 | 0.7728 ± 0.0033 |
+| Local LightGBM (mỗi tổ chức tự train trên bảng) | 0.7831 ± 0.0001 | 0.7570 ± 0.0033 |
+| Hybrid FedAvg + Ditto | 0.7844 ± 0.0012 | 0.7745 ± 0.0042 |
+| **Hybrid FedAvg + Local LightGBM** | **0.7908 ± 0.0008** | **0.7755 ± 0.0019** |
+| Hybrid Ditto + Local LightGBM | 0.7905 ± 0.0006 | 0.7748 ± 0.0020 |
+
+**Hybrid** trộn dự đoán ở mức logit tại từng tổ chức: `logit(p) = w·logit(p_A) + (1 − w)·logit(p_B)`, với
+`w ∈ {0, 0.05, …, 1}` chọn trên Validation của tổ chức. Thành phần cục bộ chỉ train trên dữ liệu của tổ chức,
+nên không dữ liệu nào rời khỏi tổ chức.
+
+- Hybrid FedAvg + Local LightGBM tăng **+0.0073 AUC** so với FedAvg, dương ở cả 3 seed. Đây là phương pháp
+  Federated tốt nhất, chỉ kém Centralized LightGBM 0.002.
+- Phần lớn mức tăng đến từ việc kết hợp mô hình graph với mô hình bảng. Cá nhân hóa thuần trong HeteroGNN
+  (Ditto, Hybrid FedAvg + Ditto) chỉ thay đổi khoảng ±0.001.
+- Phân tích concept shift (`06_concept_shift.py`) cho thấy các tổ chức trong kịch bản theo vùng gần như dùng
+  chung một quan hệ đặc trưng → nhãn. Vì vậy FedAvg đã gần cận trên và còn ít chỗ cho cá nhân hóa.
+
+Chi tiết đầy đủ (lý thuyết, cách chia dữ liệu, bảng theo từng tổ chức, khoảng tin cậy, thảo luận) nằm trong
+[báo cáo tổng hợp](docs/Bao_cao_tong_hop_KLTN.pdf). Các báo cáo riêng:
+[tiến độ](docs/Bao_cao_tien_do_KLTN.pdf), [chia dữ liệu](docs/Bao_cao_chia_du_lieu_FL.pdf),
+[nhiều seed](docs/Bao_cao_phan_tich_nhieu_seed.pdf), [hybrid](docs/Bao_cao_ket_qua_hybrid_PFL.pdf).
 
 ## Pipeline
 
@@ -103,6 +133,10 @@ Kịch bản chính `region_territory_a0.5` mô phỏng 5 tổ chức tín dụn
 Khác biệt giữa các tổ chức về đặc trưng (thu nhập, điểm tín dụng `EXT_SOURCE`...) xuất hiện tự nhiên từ các
 vùng mà tổ chức phụ trách. Tỷ lệ vỡ nợ chỉ chênh nhẹ (7.6% – 9.3%), sát với thực tế.
 
+Kịch bản phụ `income_mix_a0.5` chia theo cơ cấu danh mục: mọi tổ chức phục vụ mọi nhóm thu nhập
+(`NAME_INCOME_TYPE`) nhưng có thế mạnh riêng, với tỷ lệ `p_s = (1 − floor)·Dirichlet(α) + floor/K`, floor = 0.1.
+Hiện mới chạy bước chia và phân tích concept shift.
+
 Kịch bản phụ `label_dirichlet_a0.5` chia theo nhãn (Dirichlet trên `TARGET`), cho ra một tổ chức có 72% khách
 hàng vỡ nợ. Kịch bản này phi thực tế và chỉ được giữ làm stress test.
 
@@ -120,6 +154,8 @@ hàng vỡ nợ. Kịch bản này phi thực tế và chỉ được giữ làm
 | FedPer | Head phân loại riêng ở từng tổ chức, phần còn lại dùng chung |
 | Ditto | Mỗi tổ chức có mô hình riêng, được kéo về gần mô hình chung |
 
+- **Hybrid:** trộn mô hình chung (FedAvg hoặc Ditto) với mô hình riêng của tổ chức (Ditto hoặc LightGBM cục bộ),
+  trọng số trộn riêng cho từng tổ chức.
 - Checkpoint và threshold chọn trên Validation của từng tổ chức; Test chỉ dùng để đánh giá một lần.
 
 ## Cài đặt
@@ -159,6 +195,16 @@ Chạy theo thứ tự. Thời gian đo trên CPU 16 luồng.
 | 6 | `python scripts/03_build_graphs.py` | Dựng graph cục bộ cho từng tổ chức, encoder thống nhất | ~4 phút |
 | 7 | `python scripts/04_train_federated.py` | Train Local-only, FedAvg và 4 phương pháp Personalized FL | ~3 giờ |
 | 8 | `python scripts/05_evaluate.py` | So sánh mọi mô hình trên Test của từng tổ chức, kèm khoảng tin cậy | ~12 phút |
+| 9 | `python scripts/06_concept_shift.py` | Đo concept shift giữa các tổ chức (ma trận chéo, hiệu chỉnh, tương tác) | ~30 phút |
+| 10 | `python scripts/07_aggregate_seeds.py --seeds 42 1 2` | Tổng hợp kết quả qua nhiều seed | vài giây |
+| 11 | `python scripts/08_hybrid_personalization.py --seeds 42 1 2` | Train LightGBM cục bộ và các mô hình Hybrid | ~15 phút |
+
+Trước bước 10 và 11, chạy lại bước 4 và 7 với seed khác; kết quả ghi vào `.../seeds/seed_<n>/`, không ghi đè seed mặc định:
+
+```bash
+python scripts/04b_train_centralized_gnn.py --seed 1
+python scripts/04_train_federated.py --seed 1 --methods local fedavg ditto
+```
 
 Một số tùy chọn:
 
@@ -189,7 +235,7 @@ Siêu tham số nằm trong `configs/`:
 configs/            Siêu tham số và kịch bản thí nghiệm
 data/raw/           Dữ liệu Kaggle (không đưa lên git)
 data/processed/     Đặc trưng, split, graph đã dựng (tạo bởi script, không đưa lên git)
-docs/               Báo cáo tiến độ và sơ đồ pipeline
+docs/               Báo cáo (tổng hợp, tiến độ, chia dữ liệu, nhiều seed, hybrid) và sơ đồ pipeline
 results/metrics/    Kết quả dạng JSON / CSV
 results/logs/       Log của các lần chạy
 scripts/            Các bước của pipeline, chạy theo số thứ tự
@@ -197,9 +243,9 @@ src/
   preprocessing/    Làm sạch, aggregate bảng phụ, encoder (fit chỉ trên Train)
   graph/            Schema, dựng node/cạnh, xử lý orphan, mini-batch theo khách hàng
   models/           Logistic Regression, LightGBM, HeteroGNN
-  partition/        Chia tổ chức theo vùng / theo nhãn, đo mức non-IID
+  partition/        Chia tổ chức theo vùng / cơ cấu danh mục / theo nhãn, đo mức non-IID
   federated/        Encoder thống nhất, client, server (FedAvg, FedProx, FedPer, Ditto), fine-tune
-  evaluation/       Metric, chọn threshold, đánh giá theo tổ chức
+  evaluation/       Metric, chọn threshold, đánh giá theo tổ chức, đo concept shift
 ```
 
 ## Kết quả đã lưu
@@ -211,13 +257,19 @@ src/
 | `results/metrics/federated/<kịch bản>/partition_report.json` | Quy mô, tỷ lệ vỡ nợ, mức lệch phân phối của từng tổ chức |
 | `results/metrics/federated/<kịch bản>/federated_results.json` | Metric và lịch sử train của các phương pháp Federated |
 | `results/metrics/federated/<kịch bản>/comparison.json` | So sánh mọi mô hình theo từng tổ chức, kèm khoảng tin cậy 95% |
+| `results/metrics/federated/<kịch bản>/concept_shift*.json` | Phân tích concept shift (HeteroGNN và LightGBM) |
+| `results/metrics/federated/<kịch bản>/seeds/aggregate.json` | Kết quả mean ± std qua nhiều seed |
+| `results/metrics/federated/<kịch bản>/hybrid/` | Trọng số trộn, AUC và ΔAUC của các mô hình Hybrid |
+| `results/metrics/seeds/seed_<n>/` | Centralized HeteroGNN với seed khác |
 
 Checkpoint mô hình, graph đã dựng và file dự đoán không được đưa lên git; chạy lại các script để tạo lại.
 
 ## Hạn chế và hướng tiếp theo
 
-- Mới chạy 1 seed; cần lặp lại nhiều seed để kiểm tra độ ổn định.
-- Chạy Personalized FL trên kịch bản khác biệt mạnh hơn giữa các tổ chức, và quét α ∈ {0.1, 1, 5}.
+- Personalized FL và Hybrid chưa chạy trên kịch bản khác biệt mạnh (`income_mix_a0.5`, `label_dirichlet_a0.5`),
+  và chưa quét α ∈ {0.1, 1, 5}.
+- Validation của tổ chức được dùng lại cho early stopping, chọn trọng số trộn và chọn threshold.
+- Centralized LightGBM mới có 1 seed.
 - Tune λ của Ditto và μ của FedProx trên Validation.
 - HeteroGNN chưa được tune (attention khi gộp sự kiện, mã hóa thời gian).
 - Việc chia tổ chức là mô phỏng: Home Credit là một tổ chức duy nhất, việc dùng

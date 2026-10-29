@@ -5,6 +5,7 @@ Checkpoint + threshold chọn trên Validation của từng client, đánh giá 
 
     python scripts/04_train_federated.py                                   # tất cả
     python scripts/04_train_federated.py --methods fedper ditto
+    python scripts/04_train_federated.py --seed 1 --methods local fedavg ditto   # -> .../seeds/seed_1/
 """
 import argparse
 import json
@@ -23,7 +24,7 @@ from src.federated.fed_baselines import run_local_only
 from src.federated.personalization import run_finetune
 from src.federated.server import run_federated
 from src.models.hetero_gnn import HeteroGNN
-from src.utils.io import load_config, load_scenario, save_json
+from src.utils.io import load_config, load_scenario, save_json, seed_dir
 from src.utils.seed import set_seed
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
@@ -47,20 +48,24 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--methods", nargs="+", default=METHODS, choices=METHODS)
     parser.add_argument("--scenario")
+    parser.add_argument("--seed", type=int, help="seed huấn luyện (mặc định: seed trong config.yaml)")
     args = parser.parse_args()
 
     cfg, fcfg = load_config(), load_config("federated.yaml")
     name, pcfg, paths = load_scenario(args.scenario)
     mcfg = load_config("model.yaml")["hetero_gnn"]
-    set_seed(cfg["seed"])
+    seed = cfg["seed"] if args.seed is None else args.seed
+    for key in ["metrics", "checkpoints"]:
+        paths[key] = seed_dir(paths[key], seed, cfg["seed"])
+    set_seed(seed)
     torch.set_num_threads(mcfg["num_threads"])
-    log.info("Scenario: %s", name)
+    log.info("Scenario: %s | seed %d", name, seed)
 
     assign = pd.read_parquet(paths["assignments"])
     clients = []
     for k in sorted(assign["client"].unique()):
         data = torch.load(paths["graphs"] / f"client_{k}.pt", weights_only=False)
-        clients.append(FLClient(int(k), data, assign[assign["client"] == k], mcfg["batch_size"], cfg["seed"]))
+        clients.append(FLClient(int(k), data, assign[assign["client"] == k], mcfg["batch_size"], seed))
         log.info("client %d: train/val/test = %d/%d/%d", k, clients[-1].n("train"),
                  clients[-1].n("val"), clients[-1].n("test"))
 
@@ -70,7 +75,7 @@ def main():
         "Client có số chiều đặc trưng khác nhau -> encoder chưa thống nhất"
 
     def model_fn():
-        torch.manual_seed(cfg["seed"])  # cùng khởi tạo cho mọi phương pháp / client
+        torch.manual_seed(seed)  # cùng khởi tạo cho mọi phương pháp / client
         return HeteroGNN(in_dims, d0.edge_types, mcfg["hidden"], mcfg["num_layers"], mcfg["dropout"])
 
     out_path = paths["metrics"] / "federated_results.json"

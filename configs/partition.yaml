@@ -12,6 +12,26 @@ scenarios:
     alpha: 0.5
     seed: 42
 
+  # Cơ cấu danh mục: mọi tổ chức phục vụ mọi phân khúc thu nhập nhưng có thế mạnh riêng.
+  # Với mỗi phân khúc: tỷ lệ giao cho các tổ chức = (1 - floor) * Dirichlet(alpha) + floor / K
+  income_mix_a0.5:
+    method: segment_mix
+    segment_col: NAME_INCOME_TYPE
+    # Gộp 4 nhóm rất nhỏ (55 khách hàng) vào nhóm gần nhất
+    segment_map:
+      Working: Working
+      Commercial associate: Commercial
+      Businessman: Commercial
+      Pensioner: Pensioner
+      Unemployed: Pensioner
+      Maternity leave: Pensioner
+      Student: Pensioner
+      State servant: State servant
+    num_clients: 5
+    alpha: 0.5
+    floor: 0.1
+    seed: 42
+
   # STRESS TEST (phi thực tế): Dirichlet trên nhãn TARGET -> lệch nhãn cực đoan
   label_dirichlet_a0.5:
     method: dirichlet_label

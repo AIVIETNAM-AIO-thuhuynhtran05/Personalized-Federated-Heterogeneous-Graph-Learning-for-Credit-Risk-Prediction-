@@ -33,12 +33,14 @@ def _satisfies(df: pd.DataFrame, num_clients: int, cons: dict) -> bool:
     return bool((counts.reindex(full, fill_value=0) >= cons["min_samples_per_class_per_split"]).all())
 
 
-def partition_clients(splits: pd.DataFrame, pcfg: dict, regions: pd.Series | None = None
+def partition_clients(splits: pd.DataFrame, pcfg: dict, attribute: pd.Series | None = None
                       ) -> tuple[pd.DataFrame, dict]:
     """`splits` gồm SK_ID_CURR, TARGET, split (split chung). Trả về thêm cột `client`.
     Split Train/Val/Test được giữ nguyên -> hợp các Test của client = Test của nhánh Centralized.
-    `regions` (cùng thứ tự với splits) bắt buộc khi method = region_territory."""
+    `attribute` (cùng thứ tự với splits): mã vùng khi method = region_territory,
+    phân khúc khách hàng khi method = segment_mix."""
     from src.partition.region_partition import region_territory_partition
+    from src.partition.segment_partition import segment_mix_partition
 
     rng = np.random.default_rng(pcfg["seed"])
     cons = pcfg["constraints"]
@@ -49,8 +51,11 @@ def partition_clients(splits: pd.DataFrame, pcfg: dict, regions: pd.Series | Non
             out["client"] = dirichlet_label_partition(out["TARGET"].values, pcfg["num_clients"],
                                                       pcfg["alpha"], rng)
         elif pcfg["method"] == "region_territory":
-            out["client"], info = region_territory_partition(regions.reset_index(drop=True),
+            out["client"], info = region_territory_partition(attribute.reset_index(drop=True),
                                                              pcfg["num_clients"], pcfg["alpha"], rng)
+        elif pcfg["method"] == "segment_mix":
+            out["client"], info = segment_mix_partition(attribute, pcfg["num_clients"], pcfg["alpha"],
+                                                        pcfg["floor"], rng)
         else:
             raise ValueError(f"Unknown partition method: {pcfg['method']}")
         if _satisfies(out, pcfg["num_clients"], cons):

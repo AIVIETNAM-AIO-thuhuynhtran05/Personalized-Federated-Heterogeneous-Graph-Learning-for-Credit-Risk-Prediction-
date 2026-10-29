@@ -1,0 +1,78 @@
+C:\Users\huynh\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch\cuda\__init__.py:56: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+00:04:36 Scenario: region_territory_a0.5 | seed 2
+00:04:36 client 0: train/val/test = 24443/5101/5261
+00:04:37 client 1: train/val/test = 18050/4025/3785
+00:04:37 client 2: train/val/test = 6875/1539/1452
+00:04:38 client 3: train/val/test = 63733/13700/13726
+00:04:40 client 4: train/val/test = 102156/21762/21903
+00:04:40 === local ===
+C:\Users\huynh\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch_geometric\nn\conv\hetero_conv.py:76: UserWarning: There exist node types ({'bureau', 'prev'}) whose representations do not get updated during message passing as they do not occur as destination type in any edge type. This may lead to unexpected behavior.
+  warnings.warn(
+00:05:17 client 0 local-only | best epoch 6 | val AUC 0.75618 | 37s
+C:\Users\huynh\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch_geometric\nn\conv\hetero_conv.py:76: UserWarning: There exist node types ({'bureau', 'prev'}) whose representations do not get updated during message passing as they do not occur as destination type in any edge type. This may lead to unexpected behavior.
+  warnings.warn(
+00:05:48 client 1 local-only | best epoch 8 | val AUC 0.75834 | 31s
+C:\Users\huynh\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch_geometric\nn\conv\hetero_conv.py:76: UserWarning: There exist node types ({'bureau', 'prev'}) whose representations do not get updated during message passing as they do not occur as destination type in any edge type. This may lead to unexpected behavior.
+  warnings.warn(
+00:06:03 client 2 local-only | best epoch 11 | val AUC 0.73070 | 15s
+C:\Users\huynh\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch_geometric\nn\conv\hetero_conv.py:76: UserWarning: There exist node types ({'bureau', 'prev'}) whose representations do not get updated during message passing as they do not occur as destination type in any edge type. This may lead to unexpected behavior.
+  warnings.warn(
+00:07:14 client 3 local-only | best epoch 4 | val AUC 0.76188 | 71s
+C:\Users\huynh\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch_geometric\nn\conv\hetero_conv.py:76: UserWarning: There exist node types ({'bureau', 'prev'}) whose representations do not get updated during message passing as they do not occur as destination type in any edge type. This may lead to unexpected behavior.
+  warnings.warn(
+00:09:13 client 4 local-only | best epoch 4 | val AUC 0.78093 | 119s
+00:09:17 local TEST pooled: AUC 0.7668 | PR-AUC 0.2503 | F1 0.3183 | client-avg AUC 0.7676 | worst 0.7392
+00:09:17 === fedavg ===
+C:\Users\huynh\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch_geometric\nn\conv\hetero_conv.py:76: UserWarning: There exist node types ({'bureau', 'prev'}) whose representations do not get updated during message passing as they do not occur as destination type in any edge type. This may lead to unexpected behavior.
+  warnings.warn(
+00:09:49 fedavg round  1 | weighted val AUC 0.75008 | per-client [0.7444, 0.7381, 0.7229, 0.7471, 0.7575] | 31s
+00:10:21 fedavg round  2 | weighted val AUC 0.76298 | per-client [0.7593, 0.7538, 0.7351, 0.7596, 0.7697] | 63s
+00:10:53 fedavg round  3 | weighted val AUC 0.76966 | per-client [0.7677, 0.7612, 0.7452, 0.7645, 0.7767] | 95s
+00:11:25 fedavg round  4 | weighted val AUC 0.77209 | per-client [0.7707, 0.7628, 0.7483, 0.7675, 0.7787] | 127s
+00:11:56 fedavg round  5 | weighted val AUC 0.77451 | per-client [0.7732, 0.7651, 0.7542, 0.7693, 0.7813] | 159s
+00:12:29 fedavg round  6 | weighted val AUC 0.77694 | per-client [0.7734, 0.7674, 0.7598, 0.7713, 0.7843] | 192s
+00:13:02 fedavg round  7 | weighted val AUC 0.77836 | per-client [0.7765, 0.7695, 0.7625, 0.7726, 0.7852] | 224s
+00:13:34 fedavg round  8 | weighted val AUC 0.77918 | per-client [0.7793, 0.769, 0.7643, 0.7725, 0.7863] | 257s
+00:14:06 fedavg round  9 | weighted val AUC 0.77932 | per-client [0.7793, 0.7686, 0.7689, 0.7744, 0.7851] | 289s
+00:14:39 fedavg round 10 | weighted val AUC 0.78059 | per-client [0.7815, 0.7729, 0.7706, 0.7734, 0.787] | 322s
+00:15:11 fedavg round 11 | weighted val AUC 0.78123 | per-client [0.7797, 0.7715, 0.7704, 0.7744, 0.7885] | 354s
+00:15:44 fedavg round 12 | weighted val AUC 0.78082 | per-client [0.7825, 0.7682, 0.7699, 0.7743, 0.7876] | 386s
+00:16:16 fedavg round 13 | weighted val AUC 0.78107 | per-client [0.7808, 0.771, 0.7712, 0.7751, 0.7875] | 418s
+00:16:48 fedavg round 14 | weighted val AUC 0.78310 | per-client [0.7808, 0.7737, 0.7751, 0.7772, 0.7897] | 451s
+00:17:20 fedavg round 15 | weighted val AUC 0.78211 | per-client [0.7794, 0.7696, 0.7747, 0.7768, 0.789] | 483s
+00:17:54 fedavg round 16 | weighted val AUC 0.78237 | per-client [0.7811, 0.7704, 0.7715, 0.7758, 0.7898] | 516s
+00:18:27 fedavg round 17 | weighted val AUC 0.78198 | per-client [0.7812, 0.7722, 0.7727, 0.7756, 0.7886] | 550s
+00:18:59 fedavg round 18 | weighted val AUC 0.78224 | per-client [0.7834, 0.7712, 0.7751, 0.7751, 0.7891] | 582s
+00:19:33 fedavg round 19 | weighted val AUC 0.78271 | per-client [0.7836, 0.7705, 0.7746, 0.7759, 0.7897] | 615s
+00:20:05 fedavg round 20 | weighted val AUC 0.78241 | per-client [0.786, 0.7709, 0.7732, 0.7756, 0.7886] | 648s
+00:20:05 fedavg early stopping (best round 14)
+00:20:10 fedavg TEST pooled: AUC 0.7852 | PR-AUC 0.2767 | F1 0.3397 | client-avg AUC 0.7849 | worst 0.7754
+00:20:10 === ditto ===
+C:\Users\huynh\AppData\Local\Programs\Python\Python312\Lib\site-packages\torch_geometric\nn\conv\hetero_conv.py:76: UserWarning: There exist node types ({'bureau', 'prev'}) whose representations do not get updated during message passing as they do not occur as destination type in any edge type. This may lead to unexpected behavior.
+  warnings.warn(
+00:21:19 ditto round  1 | weighted val AUC 0.71883 | per-client [0.6913, 0.6742, 0.545, 0.7309, 0.7382] | 69s
+00:22:26 ditto round  2 | weighted val AUC 0.75267 | per-client [0.7494, 0.7457, 0.711, 0.7511, 0.7587] | 136s
+00:23:32 ditto round  3 | weighted val AUC 0.76384 | per-client [0.7642, 0.7567, 0.7311, 0.758, 0.7711] | 202s
+00:24:41 ditto round  4 | weighted val AUC 0.76846 | per-client [0.7681, 0.7597, 0.7405, 0.7622, 0.7761] | 271s
+00:25:48 ditto round  5 | weighted val AUC 0.77202 | per-client [0.7708, 0.7632, 0.7478, 0.767, 0.7788] | 338s
+00:26:56 ditto round  6 | weighted val AUC 0.77406 | per-client [0.7702, 0.764, 0.7528, 0.7695, 0.7812] | 406s
+00:28:04 ditto round  7 | weighted val AUC 0.77671 | per-client [0.7723, 0.7665, 0.7565, 0.7714, 0.7844] | 474s
+00:29:11 ditto round  8 | weighted val AUC 0.77730 | per-client [0.7744, 0.7691, 0.764, 0.7709, 0.7845] | 541s
+00:30:19 ditto round  9 | weighted val AUC 0.77831 | per-client [0.7775, 0.7721, 0.7675, 0.7723, 0.7842] | 609s
+00:31:26 ditto round 10 | weighted val AUC 0.78033 | per-client [0.779, 0.7733, 0.7693, 0.7738, 0.7868] | 676s
+00:32:35 ditto round 11 | weighted val AUC 0.77944 | per-client [0.777, 0.7703, 0.7692, 0.7754, 0.785] | 745s
+00:33:43 ditto round 12 | weighted val AUC 0.78019 | per-client [0.7805, 0.7704, 0.7724, 0.7752, 0.7856] | 813s
+00:34:50 ditto round 13 | weighted val AUC 0.78071 | per-client [0.7795, 0.7722, 0.7734, 0.7739, 0.7874] | 880s
+00:35:59 ditto round 14 | weighted val AUC 0.78114 | per-client [0.781, 0.7722, 0.7752, 0.7756, 0.7867] | 949s
+00:37:07 ditto round 15 | weighted val AUC 0.78027 | per-client [0.7787, 0.7763, 0.7742, 0.7758, 0.7846] | 1017s
+00:38:16 ditto round 16 | weighted val AUC 0.78044 | per-client [0.7794, 0.7726, 0.7748, 0.7715, 0.7882] | 1086s
+00:39:25 ditto round 17 | weighted val AUC 0.78116 | per-client [0.7808, 0.7717, 0.7762, 0.7741, 0.7878] | 1155s
+00:40:33 ditto round 18 | weighted val AUC 0.77900 | per-client [0.7774, 0.7702, 0.7763, 0.773, 0.785] | 1223s
+00:41:42 ditto round 19 | weighted val AUC 0.77884 | per-client [0.7785, 0.77, 0.7733, 0.7713, 0.7857] | 1292s
+00:43:01 ditto round 20 | weighted val AUC 0.77921 | per-client [0.779, 0.7719, 0.7752, 0.773, 0.7848] | 1371s
+00:44:12 ditto round 21 | weighted val AUC 0.77938 | per-client [0.7794, 0.7727, 0.7713, 0.7748, 0.784] | 1442s
+00:45:19 ditto round 22 | weighted val AUC 0.77931 | per-client [0.782, 0.7684, 0.7737, 0.7724, 0.7854] | 1509s
+00:46:26 ditto round 23 | weighted val AUC 0.77892 | per-client [0.7817, 0.771, 0.7733, 0.7735, 0.7835] | 1576s
+00:46:26 ditto early stopping (best round 17)
+00:46:31 ditto TEST pooled: AUC 0.7823 | PR-AUC 0.2700 | F1 0.3343 | client-avg AUC 0.7823 | worst 0.7747

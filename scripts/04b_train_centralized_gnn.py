@@ -4,7 +4,9 @@ Train trên khách hàng split=train, early stopping + threshold trên split=val
 đánh giá một lần trên split=test (cùng split với LR/LightGBM).
 
     python scripts/04b_train_centralized_gnn.py
+    python scripts/04b_train_centralized_gnn.py --seed 1   # -> results/metrics/seeds/seed_1/
 """
+import argparse
 import copy
 import json
 import logging
@@ -23,7 +25,7 @@ from src.evaluation.metrics import evaluate, select_threshold
 from src.graph.graph_split import CustomerSubgraphLoader
 from src.graph.schema import CUSTOMER
 from src.models.hetero_gnn import HeteroGNN
-from src.utils.io import load_config, resolve, save_json
+from src.utils.io import load_config, resolve, save_json, seed_dir
 from src.utils.seed import set_seed
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
@@ -41,11 +43,19 @@ def predict(model, loader) -> tuple[np.ndarray, np.ndarray]:
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", type=int, help="seed huấn luyện (mặc định: seed trong config.yaml)")
+    args = parser.parse_args()
+
     cfg, gcfg = load_config(), load_config("graph.yaml")
     mcfg = load_config("model.yaml")["hetero_gnn"]
-    set_seed(cfg["seed"])
+    seed = cfg["seed"] if args.seed is None else args.seed
+    set_seed(seed)
     torch.set_num_threads(mcfg["num_threads"])
     processed, results = resolve(cfg["paths"]["processed_dir"]), resolve(cfg["paths"]["results_dir"])
+    metrics_dir = seed_dir(results / "metrics", seed, cfg["seed"])
+    ckpt_dir = seed_dir(results / "checkpoints", seed, cfg["seed"])
+    log.info("seed %d", seed)
 
     data = torch.load(processed / gcfg["files"]["centralized_graph"], weights_only=False)
     splits = pd.read_parquet(processed / cfg["files"]["splits"])
@@ -54,7 +64,7 @@ def main():
     y_all = data[CUSTOMER].y.numpy()
 
     bs = mcfg["batch_size"]
-    train_loader = CustomerSubgraphLoader(data, idx["train"], bs, shuffle=True, seed=cfg["seed"])
+    train_loader = CustomerSubgraphLoader(data, idx["train"], bs, shuffle=True, seed=seed)
     eval_loaders = {s: CustomerSubgraphLoader(data, idx[s], bs * 4) for s in ["val", "test"]}
 
     model = HeteroGNN({t: data[t].x.size(1) for t in data.node_types}, data.edge_types,
@@ -95,7 +105,7 @@ def main():
     out = {s: predict(model, eval_loaders[s]) for s in ["val", "test"]}
     thr = select_threshold(y_all[out["val"][0]], out["val"][1], cfg["threshold"]["criterion"])
 
-    metrics_path = results / "metrics" / "centralized_baselines.json"
+    metrics_path = metrics_dir / "centralized_baselines.json"
     report = json.loads(metrics_path.read_text(encoding="utf-8")) if metrics_path.exists() else {}
     report["hetero_gnn"] = {
         "val": evaluate(y_all[out["val"][0]], out["val"][1], thr),
@@ -109,15 +119,20 @@ def main():
     }
     save_json(report, metrics_path)
 
-    preds_path = results / "metrics" / "centralized_predictions.parquet"
-    preds = pd.read_parquet(preds_path)
+    # Seed khác mặc định: chép khung dự đoán (SK_ID_CURR, split, TARGET) từ file gốc, chỉ thay prob_hgnn
+    preds_path = metrics_dir / "centralized_predictions.parquet"
+    base_path = results / "metrics" / "centralized_predictions.parquet"
+    preds = pd.read_parquet(base_path)
+    if preds_path != base_path:
+        preds = preds[["SK_ID_CURR", "split", "TARGET"]].copy()
     sk = data[CUSTOMER].sk_id_curr.numpy()
     p_gnn = pd.Series(np.concatenate([out["val"][1], out["test"][1]]),
                       index=sk[np.concatenate([out["val"][0], out["test"][0]])])
     preds["prob_hgnn"] = preds["SK_ID_CURR"].map(p_gnn).values
     preds.to_parquet(preds_path, index=False)
 
-    ckpt = results / "checkpoints" / "centralized_hetero_gnn.pt"
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    ckpt = ckpt_dir / "centralized_hetero_gnn.pt"
     torch.save({"state_dict": best_state, "config": mcfg,
                 "in_dims": {t: data[t].x.size(1) for t in data.node_types}}, ckpt)
 

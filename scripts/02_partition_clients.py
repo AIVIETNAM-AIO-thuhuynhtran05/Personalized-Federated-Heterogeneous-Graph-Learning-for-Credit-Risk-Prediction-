@@ -28,15 +28,25 @@ def main():
     cfg = load_config()
     name, scfg, paths = load_scenario(args.scenario)
     splits = pd.read_parquet(resolve(cfg["paths"]["processed_dir"]) / cfg["files"]["splits"])
-    profile = read_raw(cfg, "application_train", usecols=["SK_ID_CURR", *PROFILE_COLS])
+    extra = [scfg["segment_col"]] if "segment_col" in scfg else []
+    profile = read_raw(cfg, "application_train", usecols=["SK_ID_CURR", *PROFILE_COLS, *extra])
     profile = profile.set_index("SK_ID_CURR").loc[splits["SK_ID_CURR"]].reset_index()
 
-    regions = profile[scfg["region_col"]] if scfg["method"] == "region_territory" else None
-    assign, info = partition_clients(splits, scfg, regions)
+    attribute = None
+    if scfg["method"] == "region_territory":
+        attribute = profile[scfg["region_col"]]
+    elif scfg["method"] == "segment_mix":
+        attribute = profile[scfg["segment_col"]].map(scfg["segment_map"])
+        assert attribute.notna().all(), "segment_map thiếu giá trị của " + scfg["segment_col"]
+    assign, info = partition_clients(splits, scfg, attribute)
     paths["assignments"].parent.mkdir(parents=True, exist_ok=True)
     assign.to_parquet(paths["assignments"], index=False)
 
     report = {"scenario": name, "config": scfg, **info, **partition_report(assign, profile)}
+    if attribute is not None and scfg["method"] == "segment_mix":
+        mix = pd.crosstab(assign["client"].values, attribute.values, normalize="index")
+        report["segment_mix_by_client"] = mix.round(4).to_dict(orient="index")
+        log.info("Cơ cấu phân khúc của từng client:\n%s", (mix * 100).round(1).to_string())
     save_json(report, paths["metrics"] / "partition_report.json")
 
     rows = {}

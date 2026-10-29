@@ -1,0 +1,257 @@
+{
+  "scenario": "income_mix_a0.5",
+  "config": {
+    "method": "segment_mix",
+    "segment_col": "NAME_INCOME_TYPE",
+    "segment_map": {
+      "Working": "Working",
+      "Commercial associate": "Commercial",
+      "Businessman": "Commercial",
+      "Pensioner": "Pensioner",
+      "Unemployed": "Pensioner",
+      "Maternity leave": "Pensioner",
+      "Student": "Pensioner",
+      "State servant": "State servant"
+    },
+    "num_clients": 5,
+    "alpha": 0.5,
+    "floor": 0.1,
+    "seed": 42,
+    "constraints": {
+      "min_client_share": 0.03,
+      "min_samples_per_class_per_split": 30,
+      "max_tries": 1000
+    }
+  },
+  "attempts": 1,
+  "segment_to_client_share": {
+    "Commercial": [
+      0.6699,
+      0.0494,
+      0.1143,
+      0.0226,
+      0.1438
+    ],
+    "Pensioner": [
+      0.6815,
+      0.0278,
+      0.0882,
+      0.0825,
+      0.12
+    ],
+    "State servant": [
+      0.1084,
+      0.0213,
+      0.6162,
+      0.0743,
+      0.1798
+    ],
+    "Working": [
+      0.3225,
+      0.0658,
+      0.1689,
+      0.3518,
+      0.091
+    ]
+  },
+  "clients": {
+    "0": {
+      "n": 139301,
+      "share": 0.453,
+      "default_rate": 0.077,
+      "positives": 10726,
+      "label_js_divergence": 3e-05,
+      "split_sizes": {
+        "train": 97492,
+        "val": 20974,
+        "test": 20835
+      },
+      "split_positives": {
+        "test": 1575,
+        "train": 7536,
+        "val": 1615
+      },
+      "n_regions": 81,
+      "region_rating_share": {
+        "1": 0.1184,
+        "2": 0.7305,
+        "3": 0.1511
+      },
+      "median_income": 148500.0,
+      "mean_ext_source_2": 0.5175,
+      "mean_ext_source_3": 0.5154,
+      "feature_shift_wasserstein": {
+        "EXT_SOURCE_2": 0.0163,
+        "EXT_SOURCE_3": 0.0233,
+        "LOG_INCOME": 0.0198,
+        "AGE_YEARS": 0.1405
+      }
+    },
+    "1": {
+      "n": 15993,
+      "share": 0.052,
+      "default_rate": 0.0853,
+      "positives": 1364,
+      "label_js_divergence": 5e-05,
+      "split_sizes": {
+        "train": 11164,
+        "val": 2431,
+        "test": 2398
+      },
+      "split_positives": {
+        "test": 216,
+        "train": 934,
+        "val": 214
+      },
+      "n_regions": 79,
+      "region_rating_share": {
+        "1": 0.1014,
+        "2": 0.749,
+        "3": 0.1496
+      },
+      "median_income": 153000.0,
+      "mean_ext_source_2": 0.5111,
+      "mean_ext_source_3": 0.5063,
+      "feature_shift_wasserstein": {
+        "EXT_SOURCE_2": 0.0177,
+        "EXT_SOURCE_3": 0.0235,
+        "LOG_INCOME": 0.0255,
+        "AGE_YEARS": 0.1302
+      }
+    },
+    "2": {
+      "n": 53257,
+      "share": 0.1732,
+      "default_rate": 0.0788,
+      "positives": 4197,
+      "label_js_divergence": 1e-05,
+      "split_sizes": {
+        "train": 37401,
+        "val": 7949,
+        "test": 7907
+      },
+      "split_positives": {
+        "test": 623,
+        "train": 2969,
+        "val": 605
+      },
+      "n_regions": 80,
+      "region_rating_share": {
+        "1": 0.1044,
+        "2": 0.7312,
+        "3": 0.1644
+      },
+      "median_income": 157500.0,
+      "mean_ext_source_2": 0.5168,
+      "mean_ext_source_3": 0.5096,
+      "feature_shift_wasserstein": {
+        "EXT_SOURCE_2": 0.0126,
+        "EXT_SOURCE_3": 0.0065,
+        "LOG_INCOME": 0.0309,
+        "AGE_YEARS": 0.1257
+      }
+    },
+    "3": {
+      "n": 63661,
+      "share": 0.207,
+      "default_rate": 0.091,
+      "positives": 5792,
+      "label_js_divergence": 0.00024,
+      "split_sizes": {
+        "train": 44565,
+        "val": 9570,
+        "test": 9526
+      },
+      "split_positives": {
+        "test": 898,
+        "train": 4024,
+        "val": 870
+      },
+      "n_regions": 80,
+      "region_rating_share": {
+        "1": 0.071,
+        "2": 0.7632,
+        "3": 0.1658
+      },
+      "median_income": 135000.0,
+      "mean_ext_source_2": 0.5052,
+      "mean_ext_source_3": 0.5034,
+      "feature_shift_wasserstein": {
+        "EXT_SOURCE_2": 0.048,
+        "EXT_SOURCE_3": 0.0381,
+        "LOG_INCOME": 0.0521,
+        "AGE_YEARS": 0.1737
+      }
+    },
+    "4": {
+      "n": 35299,
+      "share": 0.1148,
+      "default_rate": 0.0778,
+      "positives": 2746,
+      "label_js_divergence": 2e-05,
+      "split_sizes": {
+        "train": 24635,
+        "test": 5461,
+        "val": 5203
+      },
+      "split_positives": {
+        "test": 412,
+        "train": 1914,
+        "val": 420
+      },
+      "n_regions": 80,
+      "region_rating_share": {
+        "1": 0.1132,
+        "2": 0.7285,
+        "3": 0.1582
+      },
+      "median_income": 157500.0,
+      "mean_ext_source_2": 0.5165,
+      "mean_ext_source_3": 0.5103,
+      "feature_shift_wasserstein": {
+        "EXT_SOURCE_2": 0.0114,
+        "EXT_SOURCE_3": 0.0043,
+        "LOG_INCOME": 0.0242,
+        "AGE_YEARS": 0.009
+      }
+    }
+  },
+  "global_default_rate": 0.0807,
+  "size_max_min_ratio": 8.71,
+  "default_rate_range": [
+    0.077,
+    0.091
+  ],
+  "segment_mix_by_client": {
+    "0": {
+      "Commercial": 0.3445,
+      "Pensioner": 0.2711,
+      "State servant": 0.0169,
+      "Working": 0.3676
+    },
+    "1": {
+      "Commercial": 0.2212,
+      "Pensioner": 0.0963,
+      "State servant": 0.029,
+      "Working": 0.6536
+    },
+    "2": {
+      "Commercial": 0.1537,
+      "Pensioner": 0.0918,
+      "State servant": 0.2511,
+      "Working": 0.5034
+    },
+    "3": {
+      "Commercial": 0.0255,
+      "Pensioner": 0.0718,
+      "State servant": 0.0253,
+      "Working": 0.8774
+    },
+    "4": {
+      "Commercial": 0.2918,
+      "Pensioner": 0.1884,
+      "State servant": 0.1105,
+      "Working": 0.4092
+    }
+  }
+}
