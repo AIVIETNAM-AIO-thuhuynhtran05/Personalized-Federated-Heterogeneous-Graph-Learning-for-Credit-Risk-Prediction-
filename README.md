@@ -73,9 +73,7 @@ nên không dữ liệu nào rời khỏi tổ chức.
   chung một quan hệ đặc trưng → nhãn. Vì vậy FedAvg đã gần cận trên và còn ít chỗ cho cá nhân hóa.
 
 Chi tiết đầy đủ (lý thuyết, cách chia dữ liệu, bảng theo từng tổ chức, khoảng tin cậy, thảo luận) nằm trong
-[báo cáo tổng hợp](docs/Bao_cao_tong_hop_KLTN.pdf). Các báo cáo riêng:
-[tiến độ](docs/Bao_cao_tien_do_KLTN.pdf), [chia dữ liệu](docs/Bao_cao_chia_du_lieu_FL.pdf),
-[nhiều seed](docs/Bao_cao_phan_tich_nhieu_seed.pdf), [hybrid](docs/Bao_cao_ket_qua_hybrid_PFL.pdf).
+[báo cáo tổng hợp](docs/Bao_cao_tong_hop_KLTN.pdf).
 
 ## Pipeline
 
